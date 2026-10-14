@@ -32,6 +32,7 @@ include = ["freshroute*", "api*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+markers = ["slow: planner timing test (~10 s)"]
 
 [tool.ruff]
 line-length = 100

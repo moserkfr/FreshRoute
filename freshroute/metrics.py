@@ -6,7 +6,9 @@
   discount_cost_inr is reported separately (revenue forgone, already absent from revenue).
 
 Stock still held at the hub when the run ends is reported (``held_end_kg``) but is neither
-sold nor spoiled, so it does not enter spoilage.
+sold nor spoiled, so it does not enter spoilage. ``spoilage_pct_worst`` is a stricter companion
+(not a replacement) that counts that end stock as lost, so a planner cannot look better by
+carrying stock past the last day.
 """
 
 from __future__ import annotations
@@ -85,6 +87,8 @@ def run_metrics(r: RunResult, festival_dates: Iterable[date] = ()) -> dict:
         "rejected_kg": _sum(days, "rejected_kg"),
         "held_end_kg": days[-1].held_end_kg if days else 0.0,
         "spoilage_pct": _ratio(spoiled_kg(days), received),
+        "spoilage_pct_worst": _ratio(spoiled_kg(days) + (days[-1].held_end_kg if days else 0.0),
+                                     received),
         "fulfilment_pct": _ratio(sold, demand),
         "fulfilment_by_dest": per_dest,
         "fulfilment_min_dest": min(per_dest.values()) if per_dest else 0.0,

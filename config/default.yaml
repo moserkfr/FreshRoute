@@ -123,16 +123,29 @@ planner:
   risk_p: 0.9                        # chance-constraint probability ("risk appetite")
   solver: SCIP                       # OR-Tools pywraplp backend
   time_limit_s: 10.0
+  mip_gap: 0.01                      # stop when within 1% of the best possible objective
+  lp_fix_threshold: 0.01             # phase 2 keeps truck→destination pairs the LP uses above this
   split_batches: true                # false -> x[b,d,v] binary
   fairness_enabled: false
   fairness_phi: 0.6
   festival_guard_fdi: 0.10           # discount-engine festival guard threshold
   festival_guard_days: 2
+  safety_margin_days: 0.01           # planner keeps 0.01 ref-day inside the validator's limits
+  # Oversupply is priced by the chance it still sells: each segment of shipped kg (as a multiple
+  # of forecast demand) earns revenue × P(demand exceeds it) and loses disposal otherwise.
+  demand_breakpoints: [0.5, 0.7, 0.85, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0, 2.5]
+  min_alloc_kg: 5.0
+  clearance_quality: 0.3             # held stock that falls below q 0.3 by next morning → clearance
+  clearance_discount_pct: 35
+  b3_discount_quality: 0.5           # B3 baseline: 20% off when arrival quality < 0.5
+  b3_discount_pct: 20
   sources:
     risk_p: "assumption: p = 0.9"
     time_limit_s: "assumption: 10 s"
     fairness_phi: "assumption: φ = 0.6"
     festival_guard_fdi: "assumption: 10% demand uplift counts as a festival signal"
+    clearance: "assumption: local clearance at 35% for stock about to cross q 0.3"
+    b3: "B3 baseline rule: simple 20% discount if arrival quality < 0.5"
 
 evaluation:
   bootstrap_resamples: 2000          # resamples over seeds for means and paired differences

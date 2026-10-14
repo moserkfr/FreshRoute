@@ -159,11 +159,20 @@ class PlannerCfg(_Strict):
     risk_p: float = Field(gt=0.5, lt=1.0)
     solver: Literal["SCIP", "CBC", "CP-SAT", "HIGHS"]
     time_limit_s: float = Field(gt=0)
+    mip_gap: float = Field(ge=0, lt=1)
+    lp_fix_threshold: float = Field(ge=0, lt=1)  # truck keeps destinations with LP y above
     split_batches: bool
     fairness_enabled: bool
     fairness_phi: float = Field(ge=0, le=1)
     festival_guard_fdi: float = Field(ge=0)
     festival_guard_days: int = Field(ge=0)
+    safety_margin_days: float = Field(ge=0)       # slack inside the validator's life rules
+    demand_breakpoints: list[float] = Field(min_length=2)  # × forecast demand: sell-prob segments
+    min_alloc_kg: float = Field(gt=0)             # smaller MILP shares are dropped
+    clearance_quality: float = Field(ge=0, le=1)  # held stock below this tomorrow → clear
+    clearance_discount_pct: float = Field(ge=0, lt=100)
+    b3_discount_quality: float = Field(ge=0, le=1)  # B3: discount if arrival quality below this
+    b3_discount_pct: float = Field(ge=0, lt=100)
     sources: Sources = {}
 
 

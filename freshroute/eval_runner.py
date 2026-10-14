@@ -101,8 +101,8 @@ def aggregate(rows: list[dict], cfg: AppConfig) -> dict:
         for p in sorted({r["planner"] for r in sc_rows}):
             pr = sorted((r for r in sc_rows if r["planner"] == p), key=lambda r: r["seed"])
             entry = {k: summarise([r[k] for r in pr], n, level) for k in HEADLINE}
-            entry["fulfilment_min_dest"] = summarise([r["fulfilment_min_dest"] for r in pr],
-                                                     n, level)
+            for k in ("fulfilment_min_dest", "spoilage_pct_worst", "held_end_kg"):
+                entry[k] = summarise([r[k] for r in pr], n, level)
             entry["violations_by_type"] = {}
             for r in pr:
                 for k, v in r["violations"].items():
@@ -127,7 +127,7 @@ def aggregate(rows: list[dict], cfg: AppConfig) -> dict:
 
 
 def _fmt(k: str, s: dict) -> str:
-    if k.endswith("_pct"):
+    if "_pct" in k:
         return f"{s['mean']:.1%} [{s['ci_lo']:.1%}, {s['ci_hi']:.1%}]"
     if k.endswith("_inr"):
         return f"₹{s['mean']:,.0f} [{s['ci_lo']:,.0f}, {s['ci_hi']:,.0f}]"
@@ -144,10 +144,13 @@ def to_markdown(report: dict) -> str:
               f"{int(meta['ci_level'] * 100)}% bootstrap CI over seeds", ""]
     for sc, planners in report["aggregate"].items():
         lines += [f"## {sc}", "",
-                  "| planner | spoilage | fulfilment | net revenue | violations |",
-                  "|---|---|---|---|---|"]
+                  "| planner | spoilage | fulfilment | net revenue | violations "
+                  "| spoilage incl. end stock | end stock (t) |",
+                  "|---|---|---|---|---|---|---|"]
         for p, e in planners.items():
-            lines.append(f"| {p} | " + " | ".join(_fmt(k, e[k]) for k in HEADLINE) + " |")
+            lines.append(f"| {p} | " + " | ".join(_fmt(k, e[k]) for k in HEADLINE)
+                         + f" | {_fmt('spoilage_pct_worst', e['spoilage_pct_worst'])}"
+                         + f" | {e['held_end_kg']['mean'] / 1000:.1f} |")
         diffs = [(p, e) for p, e in planners.items() if "vs_baseline" in e]
         if diffs:
             lines += ["", f"Paired difference vs `{meta['baseline']}` (planner − baseline):", "",

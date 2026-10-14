@@ -1,0 +1,93 @@
+# FreshRoute global parameters.
+# Units: kg, km, hours, INR (₹), °C, days.
+# Convention: every section has a `sources` map (param -> citation or "assumption: ...").
+# Code never hardcodes these numbers; it reads them from here.
+
+seeds:
+  tuning: [1, 50]        # inclusive range used while developing / tuning
+  validation: [51, 100]  # inclusive range used by `make eval` by default
+  hidden_min: 1000       # seeds >= this are locked until the final M7 run
+  sources:
+    splits: "spec §8 Splits"
+
+simulation:
+  days: 14                    # simulated days per scenario run
+  dispatch_hour: 6            # trucks leave the hub at 06:00 IST
+  load_hours: 1.0             # loading + waiting at hub, at ambient temperature
+  unload_hours: 1.0           # unloading at destination, at ambient temperature
+  ambient_temp_c: 28.0        # Karnataka hub default (scenario-overridable)
+  replan: false               # mid-day replanning hook (on for replan-vs-static runs)
+  sources:
+    ambient_temp_c: "spec §6: Karnataka hub default 28 °C"
+    load_hours: "spec §6 default 1.0 h"
+    unload_hours: "spec §6 default 1.0 h"
+    dispatch_hour: "assumption: early-morning dispatch typical for mandi supply"
+
+shelf_life:
+  q10_default: 2.0
+  chill_penalty: 1.5          # multiplier on ΔL when below chill threshold
+  # Quality -> price multiplier m(q), disclosed rule (spec §6).
+  price_bands:
+    full_q: 0.6               # q >= full_q -> 1.0
+    mid_q: 0.3                # mid_q <= q < full_q -> linear mid_low_mult .. 1.0
+    mid_low_mult: 0.70
+    clearance_q: 0.15         # clearance_q <= q < mid_q -> clearance_mult
+    clearance_mult: 0.50
+    # q < clearance_q -> 0 (spoiled: write-off + disposal)
+  sources:
+    q10_default: "arXiv 2511.05920 uses Q10=2; literature range 1.5–3"
+    chill_penalty: "assumption: spec §6 default 1.5"
+    price_bands: "assumption: disclosed quality-price rule, spec §6"
+
+travel:
+  speed_kmph: 40.0
+  road_factor: 1.3            # haversine -> road distance when OSRM matrix is absent
+  delay_prob: 0.2             # share of legs that incur a delay
+  delay_mean_h_per_100km: 0.5 # TruncNormal mean, scaled by distance/100 km
+  delay_sd_h_per_100km: 0.2
+  sources:
+    speed_kmph: "assumption: spec §8 default 40 km/h for Indian highway trucks"
+    road_factor: "assumption: spec §8 haversine × 1.3"
+    delay_prob: "arXiv 2511.05920 delay model (20% probability)"
+    delay_mean_h_per_100km: "arXiv 2511.05920 pattern; spec §8"
+
+cost:
+  disposal_per_kg: 1.0               # ₹/kg for spoiled / unsold produce
+  writeoff_per_kg: 0.0               # extra ₹/kg on unsold stock in discount EV (procurement is sunk)
+  unmet_demand_penalty_per_kg: 2.0   # π, objective only; never booked as cash
+  discount_ladder_pct: [0, 10, 20, 35]
+  discount_elasticity: 1.5           # 10% off -> +15% sell-through
+  discount_uplift_cap: 0.40          # sell-through uplift capped at +40%
+  hub_storage_temp_c: 24.0           # ventilated packhouse at the hub (held stock ages here)
+  sources:
+    disposal_per_kg: "assumption: municipal/compost disposal incl. handling"
+    writeoff_per_kg: "decision: 0 so discount EV matches the net-revenue metric (no procurement cost)"
+    unmet_demand_penalty_per_kg: "assumption: goodwill penalty, objective only (spec §8)"
+    discount_ladder_pct: "spec §8 discount ladder"
+    discount_elasticity: "spec §8: 10% off -> +15% sell-through, capped at +40%"
+    hub_storage_temp_c: "assumption: shaded, ventilated packhouse ~4 °C below ambient"
+
+market:
+  demand_price_elasticity: -0.4      # ε_d used in the Festival Demand Index
+  forecast_mode: full                # full | no_calendar | flat
+  horizon_days: 3                    # H: forecast + hold-value look-ahead
+  fdi_window: [-7, 2]                # festival offsets τ studied (days)
+  fdi_bootstrap_resamples: 1000
+  sources:
+    demand_price_elasticity: "assumption: spec §7.2 default −0.4 (range −0.3…−0.6)"
+    horizon_days: "spec §9.2 H = 3 days"
+
+planner:
+  risk_p: 0.9                        # chance-constraint probability ("risk appetite")
+  solver: SCIP                       # OR-Tools pywraplp backend
+  time_limit_s: 10.0
+  split_batches: true                # false -> x[b,d,v] binary
+  fairness_enabled: false
+  fairness_phi: 0.6
+  festival_guard_fdi: 0.10           # discount-engine festival guard threshold
+  festival_guard_days: 2
+  sources:
+    risk_p: "spec §6 default p = 0.9"
+    time_limit_s: "spec §9.2 default 10 s"
+    fairness_phi: "spec §9.2 φ = 0.6"
+    festival_guard_fdi: "assumption: 10% demand uplift counts as a festival signal"

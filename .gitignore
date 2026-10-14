@@ -218,3 +218,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# FreshRoute
+data/generated/
+reports/*
+!reports/final/
+web/node_modules/
+web/dist/

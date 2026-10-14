@@ -1,0 +1,85 @@
+# Shelf-life and temperature parameters per commodity.
+# shelf_life_ref_days = total life at t_ref_c from harvest (midpoint of the published range).
+# temp_group decides reefer compatibility: "chilled" (0–4 °C setpoint) or "cool" (10–13 °C).
+# Cost fields are ₹/kg (handling) and ₹/kg/day (storage).
+# harvest_age_max_days bounds the U(0, max) farm-to-hub age used by the generator (spec §8 uses 3;
+# leafy greens are tighter because nobody trucks 3-day-old spinach to a mandi).
+
+commodities:
+  - id: spinach
+    name: Spinach
+    t_ref_c: 0.0
+    shelf_life_ref_days: 12.0       # 10–14 days at 0 °C
+    q10: 2.0
+    chill_threshold_c: null
+    temp_group: chilled
+    handling_cost_per_kg: 0.6
+    storage_cost_per_kg_day: 0.30
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 1.0
+    source: "USDA HB66 via UGA storage table (10–14 d at 0 °C); costs: assumption"
+
+  - id: tomato
+    name: Tomato
+    t_ref_c: 10.0
+    shelf_life_ref_days: 5.5        # 4–7 days at 10 °C
+    q10: 2.0
+    chill_threshold_c: 10.0
+    temp_group: cool
+    handling_cost_per_kg: 0.5
+    storage_cost_per_kg_day: 0.20
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 2.0
+    source: "USDA HB66 via UGA (4–7 d at 10 °C, chilling < 10 °C); costs: assumption"
+
+  - id: okra
+    name: Okra
+    t_ref_c: 8.0
+    shelf_life_ref_days: 8.5        # 7–10 days at 7–10 °C
+    q10: 2.0
+    chill_threshold_c: 7.0
+    temp_group: cool
+    handling_cost_per_kg: 0.5
+    storage_cost_per_kg_day: 0.20
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 2.0
+    source: "USDA HB66 via UGA (7–10 d, chilling < 7 °C); costs: assumption"
+
+  - id: mango
+    name: Mango
+    t_ref_c: 13.0
+    shelf_life_ref_days: 17.5       # 14–21 days at 13 °C
+    q10: 2.0
+    chill_threshold_c: 13.0
+    temp_group: cool
+    handling_cost_per_kg: 0.8
+    storage_cost_per_kg_day: 0.25
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 3.0
+    source: "ITFNet mango post-harvest (13 °C, chilling < 13 °C, 4–10 d ambient); costs: assumption"
+
+  - id: cabbage
+    name: Cabbage
+    t_ref_c: 0.0
+    shelf_life_ref_days: 31.5       # 21–42 days at 0 °C
+    q10: 2.0
+    chill_threshold_c: null
+    temp_group: chilled
+    handling_cost_per_kg: 0.4
+    storage_cost_per_kg_day: 0.10
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 3.0
+    source: "USDA HB66 via UGA (3–6 weeks at 0 °C); costs: assumption"
+
+  - id: onion
+    name: Onion (dry)
+    t_ref_c: 0.0
+    shelf_life_ref_days: 60.0       # 30–240 days dry storage; spec fixes 60 for simulation
+    q10: 2.0
+    chill_threshold_c: null
+    temp_group: chilled
+    handling_cost_per_kg: 0.4
+    storage_cost_per_kg_day: 0.05
+    min_sellable_quality: 0.15
+    harvest_age_max_days: 3.0
+    source: "USDA HB66 via UGA (1–8 months at 0 °C; 60 d used per spec §6); costs: assumption"

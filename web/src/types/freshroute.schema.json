@@ -1,0 +1,845 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Commodity": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "t_ref_c": {
+          "description": "ideal storage temperature, \u00b0C",
+          "title": "T Ref C",
+          "type": "number"
+        },
+        "shelf_life_ref_days": {
+          "description": "total life at t_ref from harvest, days",
+          "exclusiveMinimum": 0,
+          "title": "Shelf Life Ref Days",
+          "type": "number"
+        },
+        "q10": {
+          "default": 2.0,
+          "exclusiveMinimum": 1,
+          "title": "Q10",
+          "type": "number"
+        },
+        "chill_threshold_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "below this \u2192 chilling injury, \u00b0C",
+          "title": "Chill Threshold C"
+        },
+        "temp_group": {
+          "description": "reefer compatibility group",
+          "enum": [
+            "chilled",
+            "cool"
+          ],
+          "title": "Temp Group",
+          "type": "string"
+        },
+        "handling_cost_per_kg": {
+          "description": "\u20b9/kg",
+          "minimum": 0,
+          "title": "Handling Cost Per Kg",
+          "type": "number"
+        },
+        "storage_cost_per_kg_day": {
+          "description": "\u20b9/kg/day",
+          "minimum": 0,
+          "title": "Storage Cost Per Kg Day",
+          "type": "number"
+        },
+        "min_sellable_quality": {
+          "default": 0.15,
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Sellable Quality",
+          "type": "number"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "t_ref_c",
+        "shelf_life_ref_days",
+        "chill_threshold_c",
+        "temp_group",
+        "handling_cost_per_kg",
+        "storage_cost_per_kg_day",
+        "source"
+      ],
+      "title": "Commodity",
+      "type": "object"
+    },
+    "Batch": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "commodity_id": {
+          "title": "Commodity Id",
+          "type": "string"
+        },
+        "qty_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Qty Kg",
+          "type": "number"
+        },
+        "grade": {
+          "enum": [
+            "A",
+            "B",
+            "C"
+          ],
+          "title": "Grade",
+          "type": "string"
+        },
+        "harvest_ts": {
+          "format": "date-time",
+          "title": "Harvest Ts",
+          "type": "string"
+        },
+        "location_id": {
+          "title": "Location Id",
+          "type": "string"
+        },
+        "remaining_life_mean_days": {
+          "description": "reference-days of life left (mean)",
+          "title": "Remaining Life Mean Days",
+          "type": "number"
+        },
+        "remaining_life_sd_days": {
+          "description": "reference-days, 1 \u03c3",
+          "minimum": 0,
+          "title": "Remaining Life Sd Days",
+          "type": "number"
+        },
+        "cost_basis_per_kg": {
+          "description": "\u20b9/kg paid to procure",
+          "minimum": 0,
+          "title": "Cost Basis Per Kg",
+          "type": "number"
+        }
+      },
+      "required": [
+        "batch_id",
+        "commodity_id",
+        "qty_kg",
+        "grade",
+        "harvest_ts",
+        "location_id",
+        "remaining_life_mean_days",
+        "remaining_life_sd_days",
+        "cost_basis_per_kg"
+      ],
+      "title": "Batch",
+      "type": "object"
+    },
+    "Destination": {
+      "additionalProperties": false,
+      "properties": {
+        "dest_id": {
+          "title": "Dest Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "mandi",
+            "retail_dc",
+            "processor"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "lat": {
+          "title": "Lat",
+          "type": "number"
+        },
+        "lon": {
+          "title": "Lon",
+          "type": "number"
+        },
+        "region": {
+          "title": "Region",
+          "type": "string"
+        },
+        "receive_open_h": {
+          "description": "local hour",
+          "maximum": 24,
+          "minimum": 0,
+          "title": "Receive Open H",
+          "type": "integer"
+        },
+        "receive_close_h": {
+          "description": "local hour (exclusive)",
+          "maximum": 24,
+          "minimum": 0,
+          "title": "Receive Close H",
+          "type": "integer"
+        },
+        "handling_cost_per_kg": {
+          "description": "\u20b9/kg",
+          "minimum": 0,
+          "title": "Handling Cost Per Kg",
+          "type": "number"
+        },
+        "min_quality_accepted": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Min Quality Accepted",
+          "type": "number"
+        }
+      },
+      "required": [
+        "dest_id",
+        "name",
+        "type",
+        "lat",
+        "lon",
+        "region",
+        "receive_open_h",
+        "receive_close_h",
+        "handling_cost_per_kg",
+        "min_quality_accepted"
+      ],
+      "title": "Destination",
+      "type": "object"
+    },
+    "Lane": {
+      "additionalProperties": false,
+      "properties": {
+        "origin_id": {
+          "title": "Origin Id",
+          "type": "string"
+        },
+        "dest_id": {
+          "title": "Dest Id",
+          "type": "string"
+        },
+        "distance_km": {
+          "exclusiveMinimum": 0,
+          "title": "Distance Km",
+          "type": "number"
+        },
+        "travel_time_h_mean": {
+          "exclusiveMinimum": 0,
+          "title": "Travel Time H Mean",
+          "type": "number"
+        },
+        "travel_time_h_sd": {
+          "minimum": 0,
+          "title": "Travel Time H Sd",
+          "type": "number"
+        },
+        "open": {
+          "default": true,
+          "title": "Open",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "origin_id",
+        "dest_id",
+        "distance_km",
+        "travel_time_h_mean",
+        "travel_time_h_sd"
+      ],
+      "title": "Lane",
+      "type": "object"
+    },
+    "Vehicle": {
+      "additionalProperties": false,
+      "properties": {
+        "vehicle_id": {
+          "title": "Vehicle Id",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "ambient",
+            "reefer"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "class_id": {
+          "title": "Class Id",
+          "type": "string"
+        },
+        "capacity_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Capacity Kg",
+          "type": "number"
+        },
+        "cost_per_km": {
+          "description": "\u20b9/km, charged on the round trip",
+          "minimum": 0,
+          "title": "Cost Per Km",
+          "type": "number"
+        },
+        "fixed_cost_per_trip": {
+          "description": "\u20b9 per dispatch",
+          "minimum": 0,
+          "title": "Fixed Cost Per Trip",
+          "type": "number"
+        },
+        "cargo_temp_c": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None for ambient (follows ambient temp)",
+          "title": "Cargo Temp C"
+        },
+        "available": {
+          "default": true,
+          "title": "Available",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "vehicle_id",
+        "type",
+        "class_id",
+        "capacity_kg",
+        "cost_per_km",
+        "fixed_cost_per_trip"
+      ],
+      "title": "Vehicle",
+      "type": "object"
+    },
+    "MarketDay": {
+      "additionalProperties": false,
+      "description": "Forecast (planner) or truth (simulator) for one destination \u00d7 commodity \u00d7 date.",
+      "properties": {
+        "dest_id": {
+          "title": "Dest Id",
+          "type": "string"
+        },
+        "commodity_id": {
+          "title": "Commodity Id",
+          "type": "string"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "demand_kg_mean": {
+          "minimum": 0,
+          "title": "Demand Kg Mean",
+          "type": "number"
+        },
+        "demand_kg_sd": {
+          "minimum": 0,
+          "title": "Demand Kg Sd",
+          "type": "number"
+        },
+        "price_per_kg_forecast": {
+          "description": "\u20b9/kg at full quality",
+          "minimum": 0,
+          "title": "Price Per Kg Forecast",
+          "type": "number"
+        },
+        "price_sd": {
+          "minimum": 0,
+          "title": "Price Sd",
+          "type": "number"
+        },
+        "fdi": {
+          "default": 0.0,
+          "description": "festival demand uplift in force (0 = none)",
+          "title": "Fdi",
+          "type": "number"
+        },
+        "festival": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Festival"
+        }
+      },
+      "required": [
+        "dest_id",
+        "commodity_id",
+        "date",
+        "demand_kg_mean",
+        "demand_kg_sd",
+        "price_per_kg_forecast",
+        "price_sd"
+      ],
+      "title": "MarketDay",
+      "type": "object"
+    },
+    "State": {
+      "additionalProperties": false,
+      "description": "Everything a planner may see on one morning. Contains expectations only (spec \u00a72.1).",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "ambient_temp_c": {
+          "title": "Ambient Temp C",
+          "type": "number"
+        },
+        "batches": {
+          "items": {
+            "$ref": "#/$defs/Batch"
+          },
+          "title": "Batches",
+          "type": "array"
+        },
+        "vehicles": {
+          "items": {
+            "$ref": "#/$defs/Vehicle"
+          },
+          "title": "Vehicles",
+          "type": "array"
+        },
+        "destinations": {
+          "items": {
+            "$ref": "#/$defs/Destination"
+          },
+          "title": "Destinations",
+          "type": "array"
+        },
+        "lanes": {
+          "items": {
+            "$ref": "#/$defs/Lane"
+          },
+          "title": "Lanes",
+          "type": "array"
+        },
+        "market_forecast": {
+          "items": {
+            "$ref": "#/$defs/MarketDay"
+          },
+          "title": "Market Forecast",
+          "type": "array"
+        },
+        "commodities": {
+          "items": {
+            "$ref": "#/$defs/Commodity"
+          },
+          "title": "Commodities",
+          "type": "array"
+        },
+        "hub_id": {
+          "title": "Hub Id",
+          "type": "string"
+        },
+        "config_snapshot": {
+          "additionalProperties": true,
+          "title": "Config Snapshot",
+          "type": "object"
+        }
+      },
+      "required": [
+        "date",
+        "ambient_temp_c",
+        "batches",
+        "vehicles",
+        "destinations",
+        "lanes",
+        "market_forecast",
+        "commodities",
+        "hub_id"
+      ],
+      "title": "State",
+      "type": "object"
+    },
+    "Driver": {
+      "additionalProperties": false,
+      "description": "One numeric fact behind a decision; ``text`` is generated from ``value``.",
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "title": "Value",
+          "type": "number"
+        },
+        "unit": {
+          "title": "Unit",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "unit",
+        "text"
+      ],
+      "title": "Driver",
+      "type": "object"
+    },
+    "Reason": {
+      "additionalProperties": false,
+      "properties": {
+        "decision_text": {
+          "title": "Decision Text",
+          "type": "string"
+        },
+        "runner_up_text": {
+          "title": "Runner Up Text",
+          "type": "string"
+        },
+        "delta_value_inr": {
+          "title": "Delta Value Inr",
+          "type": "number"
+        },
+        "drivers": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Driver"
+          },
+          "title": "Drivers",
+          "type": "array"
+        }
+      },
+      "required": [
+        "decision_text",
+        "runner_up_text",
+        "delta_value_inr"
+      ],
+      "title": "Reason",
+      "type": "object"
+    },
+    "Allocation": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "dest_id": {
+          "title": "Dest Id",
+          "type": "string"
+        },
+        "vehicle_id": {
+          "title": "Vehicle Id",
+          "type": "string"
+        },
+        "qty_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Qty Kg",
+          "type": "number"
+        },
+        "discount_pct": {
+          "default": 0.0,
+          "exclusiveMaximum": 100,
+          "minimum": 0,
+          "title": "Discount Pct",
+          "type": "number"
+        },
+        "depart_ts": {
+          "format": "date-time",
+          "title": "Depart Ts",
+          "type": "string"
+        },
+        "eta_ts": {
+          "format": "date-time",
+          "title": "Eta Ts",
+          "type": "string"
+        },
+        "arrival_quality_mean": {
+          "title": "Arrival Quality Mean",
+          "type": "number"
+        },
+        "arrival_quality_p10": {
+          "title": "Arrival Quality P10",
+          "type": "number"
+        },
+        "expected_net_value": {
+          "description": "\u20b9, before shared vehicle costs",
+          "title": "Expected Net Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "batch_id",
+        "dest_id",
+        "vehicle_id",
+        "qty_kg",
+        "depart_ts",
+        "eta_ts",
+        "arrival_quality_mean",
+        "arrival_quality_p10",
+        "expected_net_value"
+      ],
+      "title": "Allocation",
+      "type": "object"
+    },
+    "Hold": {
+      "additionalProperties": false,
+      "properties": {
+        "batch_id": {
+          "title": "Batch Id",
+          "type": "string"
+        },
+        "qty_kg": {
+          "exclusiveMinimum": 0,
+          "title": "Qty Kg",
+          "type": "number"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "discount_pct": {
+          "default": 0.0,
+          "exclusiveMaximum": 100,
+          "minimum": 0,
+          "title": "Discount Pct",
+          "type": "number"
+        }
+      },
+      "required": [
+        "batch_id",
+        "qty_kg",
+        "reason"
+      ],
+      "title": "Hold",
+      "type": "object"
+    },
+    "SolverMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "title": "Status",
+          "type": "string"
+        },
+        "objective": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Objective"
+        },
+        "best_bound": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Best Bound"
+        },
+        "gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Gap"
+        },
+        "time_s": {
+          "default": 0.0,
+          "title": "Time S",
+          "type": "number"
+        },
+        "fallback_used": {
+          "default": false,
+          "title": "Fallback Used",
+          "type": "boolean"
+        },
+        "pruning_ratio": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pruning Ratio"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "SolverMeta",
+      "type": "object"
+    },
+    "Violation": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "title": "Type",
+          "type": "string"
+        },
+        "batch_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Batch Id"
+        },
+        "vehicle_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Vehicle Id"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "detail"
+      ],
+      "title": "Violation",
+      "type": "object"
+    },
+    "Plan": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "planner_name": {
+          "title": "Planner Name",
+          "type": "string"
+        },
+        "allocations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Allocation"
+          },
+          "title": "Allocations",
+          "type": "array"
+        },
+        "holds": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Hold"
+          },
+          "title": "Holds",
+          "type": "array"
+        },
+        "vehicle_assignments": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "vehicle_id \u2192 dest_id",
+          "title": "Vehicle Assignments",
+          "type": "object"
+        },
+        "vehicle_setpoints": {
+          "additionalProperties": {
+            "enum": [
+              "chilled",
+              "cool"
+            ],
+            "type": "string"
+          },
+          "description": "reefer vehicle_id \u2192 temperature group run today",
+          "title": "Vehicle Setpoints",
+          "type": "object"
+        },
+        "reasons": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Reason"
+          },
+          "title": "Reasons",
+          "type": "object"
+        },
+        "solver_meta": {
+          "$ref": "#/$defs/SolverMeta",
+          "default": {
+            "status": "n/a",
+            "objective": null,
+            "best_bound": null,
+            "gap": null,
+            "time_s": 0.0,
+            "fallback_used": false,
+            "pruning_ratio": null
+          }
+        },
+        "violations": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Violation"
+          },
+          "title": "Violations",
+          "type": "array"
+        }
+      },
+      "required": [
+        "date",
+        "planner_name"
+      ],
+      "title": "Plan",
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+# Scenario definitions (spec §8).
+# Day numbers are 0-indexed: day 0 is the first simulated morning.
+# `overrides` change generator parameters for the whole run (multiplicative unless noted).
+# `events` are dated disruptions. `announced: false` means the planner's forecast does not
+# include it (the simulator's truth does) — that is what "unannounced" means in the spec.
+# Destination selectors: a dest_id, or "farthest" / "nearest" (by road distance from hub).
+
+defaults:
+  days: 14
+  start_date: "2025-07-07"   # a non-festival fortnight
+
+scenarios:
+  normal:
+    description: "Base parameters, non-festival fortnight — headline numbers."
+    overrides: {}
+    events: []
+
+  festival_peak:
+    description: "Fortnight containing Deepavali (2025-10-20): pre-positioning, holding storable stock, no pre-festival discounting, post-festival lull."
+    start_date: "2025-10-12"
+    overrides: {}
+    events: []
+
+  harvest_glut:
+    description: "Arrivals +60%, glut regime, prices −25% — discounting, balance, processor use."
+    start_date: "2025-02-03"
+    overrides: {supply_mult: 1.6, price_mult: 0.75, regime: glut}
+    events: []
+
+  scarcity:
+    description: "Scarcity regime, supply −35%, prices +40% — allocation of scarce stock."
+    overrides: {supply_mult: 0.65, price_mult: 1.4, regime: scarcity}
+    events: []
+
+  heatwave:
+    description: "Ambient +6 °C — temperature-aware shelf life, reefer prioritisation."
+    overrides: {ambient_delta_c: 6.0}
+    events: []
+
+  monsoon:
+    description: "Supply −20%, travel time +30%, delay prob 0.4, grading sd ×1.5 — uncertainty handling."
+    overrides: {supply_mult: 0.8, travel_time_mult: 1.3, delay_prob: 0.4, life_sd_mult: 1.5}
+    events: []
+
+  lane_closure:
+    description: "Farthest lane closed from day 3 — replanning."
+    overrides: {}
+    events:
+      - {type: lane_closure, day: 3, announced: false, params: {dest: farthest}}
+
+  reefer_breakdown:
+    description: "Reefer R1 unavailable on day 2 — compatibility + capacity re-optimisation."
+    overrides: {}
+    events:
+      - {type: vehicle_down, day: 2, announced: false, params: {vehicle_id: R1, duration_days: 1}}
+
+  demand_spike:
+    description: "One destination +80% demand for 2 days, unannounced — responsiveness."
+    overrides: {}
+    events:
+      - {type: demand_spike, day: 5, announced: false, params: {dest: chennai_koyambedu, mult: 1.8, duration_days: 2}}
+
+  price_crash:
+    description: "One market × commodity −30…−60% (export-ban-like) from day 4 — reallocation."
+    overrides: {}
+    events:
+      - {type: price_shock, day: 4, announced: false, params: {dest: hyd_bowenpally, commodity: onion, mult_low: 0.4, mult_high: 0.7}}
+
+  grading_noise:
+    description: "Shelf-life sd ×2 — value of the chance constraint."
+    overrides: {life_sd_mult: 2.0}
+    events: []
+
+sources:
+  harvest_glut: "spec §8; magnitude cf. Kolar tomato ₹2.60/kg low (Jul 2021)"
+  price_crash: "Lasalgaon onion ≈ ₹4,500 → ₹1,500/quintal after export ban (global-agriculture.com)"
+  festival_peak: "Deepavali 2025 date from kalagana / Drik Panchang"

@@ -1,0 +1,111 @@
+# Distribution network: one hub, 5–7 destinations.
+# Receive windows are local hours [open, close). A truck arriving outside the window waits for
+# the next opening (spec §9.1). handling_cost_per_kg is the destination-side charge
+# (commission / hamali / dock fee). min_quality_accepted is the buyer's freshness floor.
+# demand_weight apportions placeholder base demand across destinations until Agmarknet is fitted.
+
+hub:
+  id: kolar_hub
+  name: Kolar Aggregation Hub
+  lat: 13.1360
+  lon: 78.1290
+  region: KA
+  source: "Kolar APMC area (spec §8 hub choice)"
+
+destinations:
+  - dest_id: blr_kr
+    name: Bengaluru KR Market
+    type: mandi
+    lat: 12.9634
+    lon: 77.5771
+    region: KA
+    receive_open_h: 3
+    receive_close_h: 14
+    handling_cost_per_kg: 0.8
+    min_quality_accepted: 0.3
+    demand_weight: 1.6
+    agmarknet_market: "Bangalore"
+
+  - dest_id: blr_dc
+    name: Bengaluru Retail DC (Hoskote)
+    type: retail_dc
+    lat: 13.0707
+    lon: 77.7980
+    region: KA
+    receive_open_h: 6
+    receive_close_h: 22
+    handling_cost_per_kg: 0.5
+    min_quality_accepted: 0.5
+    demand_weight: 0.9
+    agmarknet_market: "Bangalore"
+
+  - dest_id: mysuru
+    name: Mysuru APMC
+    type: mandi
+    lat: 12.2700
+    lon: 76.6700
+    region: KA
+    receive_open_h: 3
+    receive_close_h: 14
+    handling_cost_per_kg: 0.8
+    min_quality_accepted: 0.3
+    demand_weight: 0.8
+    agmarknet_market: "Mysore"
+
+  - dest_id: chennai_koyambedu
+    name: Chennai Koyambedu
+    type: mandi
+    lat: 13.0700
+    lon: 80.1950
+    region: TN
+    receive_open_h: 2
+    receive_close_h: 14
+    handling_cost_per_kg: 0.9
+    min_quality_accepted: 0.3
+    demand_weight: 1.4
+    agmarknet_market: "Koyambedu"
+
+  - dest_id: hyd_bowenpally
+    name: Hyderabad Bowenpally
+    type: mandi
+    lat: 17.4710
+    lon: 78.4760
+    region: TS
+    receive_open_h: 3
+    receive_close_h: 14
+    handling_cost_per_kg: 0.9
+    min_quality_accepted: 0.3
+    demand_weight: 1.2
+    agmarknet_market: "Bowenpally"
+
+  - dest_id: hubballi
+    name: Hubballi APMC
+    type: mandi
+    lat: 15.3700
+    lon: 75.1100
+    region: KA
+    receive_open_h: 4
+    receive_close_h: 14
+    handling_cost_per_kg: 0.8
+    min_quality_accepted: 0.3
+    demand_weight: 0.6
+    agmarknet_market: "Hubli (Amaragol)"
+
+  - dest_id: malur_proc
+    name: Malur Food Processing Unit
+    type: processor
+    lat: 13.0040
+    lon: 77.9380
+    region: KA
+    receive_open_h: 0
+    receive_close_h: 24
+    handling_cost_per_kg: 0.3
+    min_quality_accepted: 0.15
+    demand_weight: 0.5
+    agmarknet_market: null
+
+sources:
+  coordinates: "OpenStreetMap market locations (approximate)"
+  receive_windows: "assumption: mandi early-morning trading; retail DC day shift; processor 24h"
+  handling_cost_per_kg: "assumption: mandi commission + hamali ≈ ₹0.8–0.9/kg; DC dock ₹0.5; processor ₹0.3"
+  min_quality_accepted: "spec §5: processor ~0.15, retail ~0.5, mandi ~0.3"

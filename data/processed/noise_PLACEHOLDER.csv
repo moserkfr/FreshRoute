@@ -1,0 +1,7 @@
+commodity_id,sigma_log_demand,sigma_log_price
+spinach,0.1,0.1
+tomato,0.1,0.1
+okra,0.1,0.1
+mango,0.1,0.1
+cabbage,0.1,0.1
+onion,0.1,0.1

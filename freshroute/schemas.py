@@ -1,4 +1,4 @@
-"""Domain data model (spec §5).
+"""Domain data model.
 
 Units: kg, km, hours, ₹ (INR), °C, days. Timestamps are timezone-aware datetimes in IST.
 Shelf life is tracked in *reference-days*: days of life at the commodity's ideal storage
@@ -107,7 +107,7 @@ class MarketDay(_Model):
 
 
 class State(_Model):
-    """Everything a planner may see on one morning. Contains expectations only (spec §2.1)."""
+    """Everything a planner may see on one morning. Contains expectations only."""
 
     date: date
     ambient_temp_c: float
@@ -193,6 +193,57 @@ class Plan(_Model):
     violations: list[Violation] = []
 
 
+# --------------------------------------------------------------- simulation output
+
+
+class DayOutcome(_Model):
+    """Ledger + cash for one simulated day. All kg, ₹.
+
+    ``settlement_only`` rows settle loads still in transit after the last planning day.
+    Every kg that enters the hub ends as sold, held, in transit, spoiled_storage,
+    spoiled_transit or unsold_market (mass balance checked daily).
+    """
+
+    day: int
+    date: date
+    settlement_only: bool = False
+    received_kg: float = 0.0
+    dispatched_kg: float = 0.0
+    sold_kg: float = 0.0
+    spoiled_storage_kg: float = 0.0
+    spoiled_transit_kg: float = 0.0
+    unsold_market_kg: float = 0.0
+    rejected_kg: float = 0.0          # subset of unsold_market: below buyer's min quality
+    held_end_kg: float = 0.0
+    in_transit_end_kg: float = 0.0
+    demand_kg: float = 0.0            # true demand on this date (all destinations)
+    revenue_inr: float = 0.0
+    discount_cost_inr: float = 0.0    # revenue forgone to discounts (reported, not subtracted)
+    transport_inr: float = 0.0
+    handling_inr: float = 0.0
+    storage_inr: float = 0.0
+    disposal_inr: float = 0.0
+    dest_sold_kg: dict[str, float] = Field(default_factory=dict)
+    dest_demand_kg: dict[str, float] = Field(default_factory=dict)
+    violations: dict[str, int] = Field(default_factory=dict)
+    dropped_kg: float = 0.0
+    trips: int = 0
+    plan_time_s: float = 0.0
+    fallback_used: bool = False
+    solver_gap: float | None = None
+    replanned: bool = False
+
+
+class RunResult(_Model):
+    scenario_id: str
+    seed: int
+    planner_name: str
+    forecast_mode: str
+    days: list[DayOutcome]
+    placeholder_data: list[str] = []
+    events: list[dict[str, Any]] = []
+
+
 EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     Commodity,
     Batch,
@@ -208,6 +259,8 @@ EXPORTED_MODELS: tuple[type[BaseModel], ...] = (
     SolverMeta,
     Violation,
     Plan,
+    DayOutcome,
+    RunResult,
 )
 
 

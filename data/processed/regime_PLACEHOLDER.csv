@@ -1,0 +1,4 @@
+regime,r_price,r_supply,r_demand
+glut,1.0,1.0,1.0
+normal,1.0,1.0,1.0
+scarcity,1.0,1.0,1.0

@@ -407,7 +407,7 @@
     },
     "State": {
       "additionalProperties": false,
-      "description": "Everything a planner may see on one morning. Contains expectations only (spec \u00a72.1).",
+      "description": "Everything a planner may see on one morning. Contains expectations only.",
       "properties": {
         "date": {
           "format": "date",
@@ -839,6 +839,224 @@
         "planner_name"
       ],
       "title": "Plan",
+      "type": "object"
+    },
+    "DayOutcome": {
+      "additionalProperties": false,
+      "description": "Ledger + cash for one simulated day. All kg, \u20b9.\n\n``settlement_only`` rows settle loads still in transit after the last planning day.\nEvery kg that enters the hub ends as sold, held, in transit, spoiled_storage,\nspoiled_transit or unsold_market (mass balance checked daily).",
+      "properties": {
+        "day": {
+          "title": "Day",
+          "type": "integer"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "settlement_only": {
+          "default": false,
+          "title": "Settlement Only",
+          "type": "boolean"
+        },
+        "received_kg": {
+          "default": 0.0,
+          "title": "Received Kg",
+          "type": "number"
+        },
+        "dispatched_kg": {
+          "default": 0.0,
+          "title": "Dispatched Kg",
+          "type": "number"
+        },
+        "sold_kg": {
+          "default": 0.0,
+          "title": "Sold Kg",
+          "type": "number"
+        },
+        "spoiled_storage_kg": {
+          "default": 0.0,
+          "title": "Spoiled Storage Kg",
+          "type": "number"
+        },
+        "spoiled_transit_kg": {
+          "default": 0.0,
+          "title": "Spoiled Transit Kg",
+          "type": "number"
+        },
+        "unsold_market_kg": {
+          "default": 0.0,
+          "title": "Unsold Market Kg",
+          "type": "number"
+        },
+        "rejected_kg": {
+          "default": 0.0,
+          "title": "Rejected Kg",
+          "type": "number"
+        },
+        "held_end_kg": {
+          "default": 0.0,
+          "title": "Held End Kg",
+          "type": "number"
+        },
+        "in_transit_end_kg": {
+          "default": 0.0,
+          "title": "In Transit End Kg",
+          "type": "number"
+        },
+        "demand_kg": {
+          "default": 0.0,
+          "title": "Demand Kg",
+          "type": "number"
+        },
+        "revenue_inr": {
+          "default": 0.0,
+          "title": "Revenue Inr",
+          "type": "number"
+        },
+        "discount_cost_inr": {
+          "default": 0.0,
+          "title": "Discount Cost Inr",
+          "type": "number"
+        },
+        "transport_inr": {
+          "default": 0.0,
+          "title": "Transport Inr",
+          "type": "number"
+        },
+        "handling_inr": {
+          "default": 0.0,
+          "title": "Handling Inr",
+          "type": "number"
+        },
+        "storage_inr": {
+          "default": 0.0,
+          "title": "Storage Inr",
+          "type": "number"
+        },
+        "disposal_inr": {
+          "default": 0.0,
+          "title": "Disposal Inr",
+          "type": "number"
+        },
+        "dest_sold_kg": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Dest Sold Kg",
+          "type": "object"
+        },
+        "dest_demand_kg": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Dest Demand Kg",
+          "type": "object"
+        },
+        "violations": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Violations",
+          "type": "object"
+        },
+        "dropped_kg": {
+          "default": 0.0,
+          "title": "Dropped Kg",
+          "type": "number"
+        },
+        "trips": {
+          "default": 0,
+          "title": "Trips",
+          "type": "integer"
+        },
+        "plan_time_s": {
+          "default": 0.0,
+          "title": "Plan Time S",
+          "type": "number"
+        },
+        "fallback_used": {
+          "default": false,
+          "title": "Fallback Used",
+          "type": "boolean"
+        },
+        "solver_gap": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Solver Gap"
+        },
+        "replanned": {
+          "default": false,
+          "title": "Replanned",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "day",
+        "date"
+      ],
+      "title": "DayOutcome",
+      "type": "object"
+    },
+    "RunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "scenario_id": {
+          "title": "Scenario Id",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "planner_name": {
+          "title": "Planner Name",
+          "type": "string"
+        },
+        "forecast_mode": {
+          "title": "Forecast Mode",
+          "type": "string"
+        },
+        "days": {
+          "items": {
+            "$ref": "#/$defs/DayOutcome"
+          },
+          "title": "Days",
+          "type": "array"
+        },
+        "placeholder_data": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Placeholder Data",
+          "type": "array"
+        },
+        "events": {
+          "default": [],
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Events",
+          "type": "array"
+        }
+      },
+      "required": [
+        "scenario_id",
+        "seed",
+        "planner_name",
+        "forecast_mode",
+        "days"
+      ],
+      "title": "RunResult",
       "type": "object"
     }
   }

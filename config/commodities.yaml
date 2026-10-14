@@ -2,8 +2,10 @@
 # shelf_life_ref_days = total life at t_ref_c from harvest (midpoint of the published range).
 # temp_group decides reefer compatibility: "chilled" (0–4 °C setpoint) or "cool" (10–13 °C).
 # Cost fields are ₹/kg (handling) and ₹/kg/day (storage).
-# harvest_age_max_days bounds the U(0, max) farm-to-hub age used by the generator (spec §8 uses 3;
-# leafy greens are tighter because nobody trucks 3-day-old spinach to a mandi).
+# harvest_age_max_days bounds the U(0, max) farm-to-hub age used by the generator. A generic
+# U(0, 3) is used for storable produce; perishables are tighter here because Kolar growers bring produce to the
+# aggregator the day it is picked or the next (at 24 °C a 2-day-old tomato has already used ~5 of its
+# 5.5 reference days, so U(0, 3) would deliver dead stock). Dry onion keeps 3 days.
 
 commodities:
   - id: spinach
@@ -16,7 +18,7 @@ commodities:
     handling_cost_per_kg: 0.6
     storage_cost_per_kg_day: 0.30
     min_sellable_quality: 0.15
-    harvest_age_max_days: 1.0
+    harvest_age_max_days: 0.5   # assumption: same/next-day arrival at the aggregator
     source: "USDA HB66 via UGA storage table (10–14 d at 0 °C); costs: assumption"
 
   - id: tomato
@@ -29,7 +31,7 @@ commodities:
     handling_cost_per_kg: 0.5
     storage_cost_per_kg_day: 0.20
     min_sellable_quality: 0.15
-    harvest_age_max_days: 2.0
+    harvest_age_max_days: 0.5   # assumption: same/next-day arrival at the aggregator
     source: "USDA HB66 via UGA (4–7 d at 10 °C, chilling < 10 °C); costs: assumption"
 
   - id: okra
@@ -42,7 +44,7 @@ commodities:
     handling_cost_per_kg: 0.5
     storage_cost_per_kg_day: 0.20
     min_sellable_quality: 0.15
-    harvest_age_max_days: 2.0
+    harvest_age_max_days: 0.75   # assumption: same/next-day arrival at the aggregator
     source: "USDA HB66 via UGA (7–10 d, chilling < 7 °C); costs: assumption"
 
   - id: mango
@@ -55,7 +57,7 @@ commodities:
     handling_cost_per_kg: 0.8
     storage_cost_per_kg_day: 0.25
     min_sellable_quality: 0.15
-    harvest_age_max_days: 3.0
+    harvest_age_max_days: 1.5   # assumption: same/next-day arrival at the aggregator
     source: "ITFNet mango post-harvest (13 °C, chilling < 13 °C, 4–10 d ambient); costs: assumption"
 
   - id: cabbage
@@ -68,13 +70,13 @@ commodities:
     handling_cost_per_kg: 0.4
     storage_cost_per_kg_day: 0.10
     min_sellable_quality: 0.15
-    harvest_age_max_days: 3.0
+    harvest_age_max_days: 1.0   # assumption: same/next-day arrival at the aggregator
     source: "USDA HB66 via UGA (3–6 weeks at 0 °C); costs: assumption"
 
   - id: onion
     name: Onion (dry)
     t_ref_c: 0.0
-    shelf_life_ref_days: 60.0       # 30–240 days dry storage; spec fixes 60 for simulation
+    shelf_life_ref_days: 60.0       # 30–240 days dry storage; 60 used for simulation
     q10: 2.0
     chill_threshold_c: null
     temp_group: chilled
@@ -82,4 +84,4 @@ commodities:
     storage_cost_per_kg_day: 0.05
     min_sellable_quality: 0.15
     harvest_age_max_days: 3.0
-    source: "USDA HB66 via UGA (1–8 months at 0 °C; 60 d used per spec §6); costs: assumption"
+    source: "USDA HB66 via UGA (1–8 months at 0 °C; 60 d used for simulation); costs: assumption"

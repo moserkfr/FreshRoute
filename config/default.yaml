@@ -8,7 +8,7 @@ seeds:
   validation: [51, 100]  # inclusive range used by `make eval` by default
   hidden_min: 1000       # seeds >= this are locked until the final M7 run
   sources:
-    splits: "spec §8 Splits"
+    splits: "tuning / validation / hidden seed sets kept disjoint"
 
 simulation:
   days: 14                    # simulated days per scenario run
@@ -17,16 +17,57 @@ simulation:
   unload_hours: 1.0           # unloading at destination, at ambient temperature
   ambient_temp_c: 28.0        # Karnataka hub default (scenario-overridable)
   replan: false               # mid-day replanning hook (on for replan-vs-static runs)
+  # Which validator findings make the simulator drop an allocation before execution:
+  #   all  -> every violation
+  #   hard -> only physical ones (capacity, stock, vehicle, lane, window, reefer group);
+  #           shelf-life / min-quality findings are counted but the load still ships.
+  drop_violations: all
+  settle_extra_days: 3        # keep settling in-transit deliveries this many days after the run
   sources:
-    ambient_temp_c: "spec §6: Karnataka hub default 28 °C"
-    load_hours: "spec §6 default 1.0 h"
-    unload_hours: "spec §6 default 1.0 h"
+    ambient_temp_c: "assumption: Karnataka hub ambient default 28 °C"
+    load_hours: "assumption: 1.0 h"
+    unload_hours: "assumption: 1.0 h"
     dispatch_hour: "assumption: early-morning dispatch typical for mandi supply"
+
+generator:
+  # Daily volume arriving at the hub per commodity (kg) before seasonality/regime/scenario.
+  base_daily_supply_kg:
+    spinach: 3000
+    tomato: 9000
+    okra: 4000
+    mango: 6000
+    cabbage: 6000
+    onion: 8000
+  supply_noise_sd: 0.15          # log-sd of day-to-day volume
+  qty_median_kg: 600             # batch size lognormal median
+  qty_sigma: 0.6                 # batch size lognormal sigma
+  qty_min_kg: 200
+  qty_max_kg: 2000
+  grade_probs: {A: 0.6, B: 0.3, C: 0.1}
+  grade_life_mult: {A: 1.0, B: 0.9, C: 0.75}   # share of reference life a grade starts with
+  grade_sd_frac: {A: 0.10, B: 0.15, C: 0.20}   # remaining-life sd as a fraction of the mean
+  cost_basis_frac: [0.60, 0.75]                # of forecast base price
+  ambient_noise_sd_c: 1.5                      # day-to-day sd of true ambient around the forecast
+  # Placeholder market only (ignored once Agmarknet is fitted): demand the hub can sell across
+  # all destinations, as a multiple of its supply.
+  placeholder_demand_to_supply: 2.0
+  placeholder_sigma_log_demand: 0.10           # day-to-day log-sd of true demand per (dest, commodity)
+  placeholder_sigma_log_price: 0.10
+  sources:
+    base_daily_supply_kg: "assumption: mid-size Kolar aggregator (~36 t/day) sized to the 42 t fleet"
+    qty: "assumption: batch qty lognormal, 200–2,000 kg"
+    grade_sd_frac: "assumption: sd 10–20% of mean, grade-dependent"
+    cost_basis_frac: "assumption: cost basis 60–75% of forecast base price"
+    grade_probs: "assumption"
+    ambient_noise_sd_c: "assumption"
+    placeholder_sigma_log: "assumption: placeholder noise until fitted from Agmarknet residuals (M2)"
+    placeholder_demand_to_supply: "assumption: a mid-size aggregator is a small share of mandi arrivals, so the markets absorb ~2× its supply; placeholder until Agmarknet volumes are fitted"
+    grade_life_mult: "assumption"
 
 shelf_life:
   q10_default: 2.0
   chill_penalty: 1.5          # multiplier on ΔL when below chill threshold
-  # Quality -> price multiplier m(q), disclosed rule (spec §6).
+  # Quality -> price multiplier m(q), disclosed rule.
   price_bands:
     full_q: 0.6               # q >= full_q -> 1.0
     mid_q: 0.3                # mid_q <= q < full_q -> linear mid_low_mult .. 1.0
@@ -36,8 +77,8 @@ shelf_life:
     # q < clearance_q -> 0 (spoiled: write-off + disposal)
   sources:
     q10_default: "arXiv 2511.05920 uses Q10=2; literature range 1.5–3"
-    chill_penalty: "assumption: spec §6 default 1.5"
-    price_bands: "assumption: disclosed quality-price rule, spec §6"
+    chill_penalty: "assumption: 1.5"
+    price_bands: "assumption: disclosed quality-price rule"
 
 travel:
   speed_kmph: 40.0
@@ -46,10 +87,10 @@ travel:
   delay_mean_h_per_100km: 0.5 # TruncNormal mean, scaled by distance/100 km
   delay_sd_h_per_100km: 0.2
   sources:
-    speed_kmph: "assumption: spec §8 default 40 km/h for Indian highway trucks"
-    road_factor: "assumption: spec §8 haversine × 1.3"
+    speed_kmph: "assumption: 40 km/h for Indian highway trucks"
+    road_factor: "assumption: haversine × 1.3"
     delay_prob: "arXiv 2511.05920 delay model (20% probability)"
-    delay_mean_h_per_100km: "arXiv 2511.05920 pattern; spec §8"
+    delay_mean_h_per_100km: "arXiv 2511.05920 pattern"
 
 cost:
   disposal_per_kg: 1.0               # ₹/kg for spoiled / unsold produce
@@ -62,9 +103,9 @@ cost:
   sources:
     disposal_per_kg: "assumption: municipal/compost disposal incl. handling"
     writeoff_per_kg: "decision: 0 so discount EV matches the net-revenue metric (no procurement cost)"
-    unmet_demand_penalty_per_kg: "assumption: goodwill penalty, objective only (spec §8)"
-    discount_ladder_pct: "spec §8 discount ladder"
-    discount_elasticity: "spec §8: 10% off -> +15% sell-through, capped at +40%"
+    unmet_demand_penalty_per_kg: "assumption: goodwill penalty, objective only"
+    discount_ladder_pct: "assumption: discount ladder"
+    discount_elasticity: "assumption: 10% off -> +15% sell-through, capped at +40%"
     hub_storage_temp_c: "assumption: shaded, ventilated packhouse ~4 °C below ambient"
 
 market:
@@ -74,8 +115,8 @@ market:
   fdi_window: [-7, 2]                # festival offsets τ studied (days)
   fdi_bootstrap_resamples: 1000
   sources:
-    demand_price_elasticity: "assumption: spec §7.2 default −0.4 (range −0.3…−0.6)"
-    horizon_days: "spec §9.2 H = 3 days"
+    demand_price_elasticity: "assumption: −0.4 (range −0.3…−0.6)"
+    horizon_days: "assumption: H = 3 days look-ahead"
 
 planner:
   risk_p: 0.9                        # chance-constraint probability ("risk appetite")
@@ -87,7 +128,15 @@ planner:
   festival_guard_fdi: 0.10           # discount-engine festival guard threshold
   festival_guard_days: 2
   sources:
-    risk_p: "spec §6 default p = 0.9"
-    time_limit_s: "spec §9.2 default 10 s"
-    fairness_phi: "spec §9.2 φ = 0.6"
+    risk_p: "assumption: p = 0.9"
+    time_limit_s: "assumption: 10 s"
+    fairness_phi: "assumption: φ = 0.6"
     festival_guard_fdi: "assumption: 10% demand uplift counts as a festival signal"
+
+evaluation:
+  bootstrap_resamples: 2000          # resamples over seeds for means and paired differences
+  ci_level: 0.95
+  baseline: fifo_nearest             # headline comparison is vs B1
+  sources:
+    bootstrap_resamples: "assumption: percentile bootstrap, 2,000 resamples"
+    baseline: "B1 is the documented baseline"

@@ -1,8 +1,10 @@
 # Distribution network: one hub, 5–7 destinations.
 # Receive windows are local hours [open, close). A truck arriving outside the window waits for
-# the next opening (spec §9.1). handling_cost_per_kg is the destination-side charge
+# the next opening. handling_cost_per_kg is the destination-side charge
 # (commission / hamali / dock fee). min_quality_accepted is the buyer's freshness floor.
 # demand_weight apportions placeholder base demand across destinations until Agmarknet is fitted.
+# assumption: a Kolar aggregator sells mostly into Bengaluru (KR market, Hoskote DC) and the Malur
+# processor; distant mandis take a smaller share of its produce.
 
 hub:
   id: kolar_hub
@@ -10,7 +12,7 @@ hub:
   lat: 13.1360
   lon: 78.1290
   region: KA
-  source: "Kolar APMC area (spec §8 hub choice)"
+  source: "Kolar APMC area"
 
 destinations:
   - dest_id: blr_kr
@@ -23,7 +25,7 @@ destinations:
     receive_close_h: 14
     handling_cost_per_kg: 0.8
     min_quality_accepted: 0.3
-    demand_weight: 1.6
+    demand_weight: 2.4
     agmarknet_market: "Bangalore"
 
   - dest_id: blr_dc
@@ -36,7 +38,7 @@ destinations:
     receive_close_h: 22
     handling_cost_per_kg: 0.5
     min_quality_accepted: 0.5
-    demand_weight: 0.9
+    demand_weight: 1.4
     agmarknet_market: "Bangalore"
 
   - dest_id: mysuru
@@ -62,7 +64,7 @@ destinations:
     receive_close_h: 14
     handling_cost_per_kg: 0.9
     min_quality_accepted: 0.3
-    demand_weight: 1.4
+    demand_weight: 0.9
     agmarknet_market: "Koyambedu"
 
   - dest_id: hyd_bowenpally
@@ -75,7 +77,7 @@ destinations:
     receive_close_h: 14
     handling_cost_per_kg: 0.9
     min_quality_accepted: 0.3
-    demand_weight: 1.2
+    demand_weight: 0.4
     agmarknet_market: "Bowenpally"
 
   - dest_id: hubballi
@@ -88,7 +90,7 @@ destinations:
     receive_close_h: 14
     handling_cost_per_kg: 0.8
     min_quality_accepted: 0.3
-    demand_weight: 0.6
+    demand_weight: 0.3
     agmarknet_market: "Hubli (Amaragol)"
 
   - dest_id: malur_proc
@@ -101,11 +103,11 @@ destinations:
     receive_close_h: 24
     handling_cost_per_kg: 0.3
     min_quality_accepted: 0.15
-    demand_weight: 0.5
+    demand_weight: 0.8
     agmarknet_market: null
 
 sources:
   coordinates: "OpenStreetMap market locations (approximate)"
   receive_windows: "assumption: mandi early-morning trading; retail DC day shift; processor 24h"
   handling_cost_per_kg: "assumption: mandi commission + hamali ≈ ₹0.8–0.9/kg; DC dock ₹0.5; processor ₹0.3"
-  min_quality_accepted: "spec §5: processor ~0.15, retail ~0.5, mandi ~0.3"
+  min_quality_accepted: "assumption: processor ~0.15, retail ~0.5, mandi ~0.3"

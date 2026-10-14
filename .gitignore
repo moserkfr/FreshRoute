@@ -225,3 +225,7 @@ reports/*
 !reports/final/
 web/node_modules/
 web/dist/
+data/raw/
+
+# Local reference documents (not part of the project)
+Problem Statements.docx

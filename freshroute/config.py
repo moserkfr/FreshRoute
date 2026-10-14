@@ -1,6 +1,6 @@
 """Load and validate the YAML configuration in ``config/``.
 
-Every tunable number lives in YAML (spec §2.8); this module only gives it types and checks.
+Every tunable number lives in YAML ; this module only gives it types and checks.
 Models use ``extra="forbid"`` so a typo in a YAML key is an error, not a silently ignored value.
 Validation failures are re-raised as :class:`ConfigError` with ``file → path: message`` lines.
 """
@@ -58,11 +58,42 @@ class SimulationCfg(_Strict):
     unload_hours: float = Field(ge=0)
     ambient_temp_c: float
     replan: bool = False
+    drop_violations: Literal["all", "hard"] = "all"
+    settle_extra_days: int = Field(default=3, ge=0)
     sources: Sources = {}
 
 
+Grade = Literal["A", "B", "C"]
+
+
+class GeneratorCfg(_Strict):
+    base_daily_supply_kg: dict[str, float]
+    supply_noise_sd: float = Field(ge=0)
+    qty_median_kg: float = Field(gt=0)
+    qty_sigma: float = Field(ge=0)
+    qty_min_kg: float = Field(gt=0)
+    qty_max_kg: float = Field(gt=0)
+    grade_probs: dict[Grade, float]
+    grade_life_mult: dict[Grade, float]
+    grade_sd_frac: dict[Grade, float]
+    cost_basis_frac: tuple[float, float]
+    ambient_noise_sd_c: float = Field(ge=0)
+    placeholder_demand_to_supply: float = Field(gt=0)
+    placeholder_sigma_log_demand: float = Field(ge=0)
+    placeholder_sigma_log_price: float = Field(ge=0)
+    sources: Sources = {}
+
+    @model_validator(mode="after")
+    def _checks(self) -> GeneratorCfg:
+        if abs(sum(self.grade_probs.values()) - 1.0) > 1e-6:
+            raise ValueError("grade_probs must sum to 1")
+        if self.qty_min_kg > self.qty_max_kg:
+            raise ValueError("qty_min_kg > qty_max_kg")
+        return self
+
+
 class PriceBandsCfg(_Strict):
-    """Quality → price multiplier bands m(q) (spec §6)."""
+    """Quality → price multiplier bands m(q)."""
 
     full_q: float = Field(gt=0, le=1)
     mid_q: float = Field(gt=0, le=1)
@@ -135,14 +166,23 @@ class PlannerCfg(_Strict):
     sources: Sources = {}
 
 
+class EvaluationCfg(_Strict):
+    bootstrap_resamples: int = Field(ge=100)
+    ci_level: float = Field(gt=0.5, lt=1.0)
+    baseline: str
+    sources: Sources = {}
+
+
 class DefaultCfg(_Strict):
     seeds: SeedsCfg
     simulation: SimulationCfg
+    generator: GeneratorCfg
     shelf_life: ShelfLifeCfg
     travel: TravelCfg
     cost: CostCfg
     market: MarketCfg
     planner: PlannerCfg
+    evaluation: EvaluationCfg
 
 
 # ------------------------------------------------------------ commodities.yaml
@@ -348,6 +388,9 @@ class AppConfig(_Strict):
             for g in groups - set(self.fleet.reefer_setpoints_c):
                 errors.append(f"fleet.yaml reefer_setpoints_c: missing setpoint for group '{g}'")
         commodity_ids = {c.id for c in self.commodities}
+        missing = commodity_ids - set(self.default.generator.base_daily_supply_kg)
+        if missing:
+            errors.append(f"default.yaml generator.base_daily_supply_kg: missing {sorted(missing)}")
         selectors = set(dest_ids) | {"farthest", "nearest"}
         for sid, sc in self.scenarios.scenarios.items():
             for i, ev in enumerate(sc.events):

@@ -1,5 +1,5 @@
 # Vehicle classes and default fleet.
-# cost_per_km is charged on the round trip (spec §9.2: dist × 2). Per tonne-km one way this is
+# cost_per_km is charged on the round trip (dist × 2). Per tonne-km one way this is
 # 2·cost_per_km / capacity_t: 3 t → ₹8.0, 6 t → ₹5.0, 9 t → ₹3.8 — bracketing the FreightFox
 # average of ₹3.78/t-km (heavy ₹1.51, light ₹11.03) with a part-load / empty-return margin.
 # Reefers run at one setpoint per day, chosen by temperature group.
@@ -38,10 +38,11 @@ default_fleet:
   - {vehicle_id: A5, class_id: ambient_9t}
   - {vehicle_id: A6, class_id: ambient_9t}
   - {vehicle_id: R1, class_id: reefer_6t}
+  - {vehicle_id: R2, class_id: reefer_6t}
 
 sources:
   cost_per_km: "FreightFox insight brief: avg ₹3.78/t-km (heavy ₹1.51, light ₹11.03)"
   reefer_premium: "AgroSpectrum: reefer premium ₹6–10/km (₹8 midpoint used)"
   fixed_cost_per_trip: "assumption: driver bata, tolls, loading labour per trip"
   reefer_setpoints_c: "USDA HB66 via UGA groups; ITFNet mango 13 °C"
-  default_fleet: "spec §8: 6 ambient (3/6/9 t mix) + 1–2 reefers (6 t)"
+  default_fleet: "assumption: 6 ambient (3/6/9 t mix) + 2 reefers (6 t), so chilled and cool groups each get one"

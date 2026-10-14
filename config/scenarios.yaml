@@ -1,8 +1,8 @@
-# Scenario definitions (spec §8).
+# Scenario definitions.
 # Day numbers are 0-indexed: day 0 is the first simulated morning.
 # `overrides` change generator parameters for the whole run (multiplicative unless noted).
 # `events` are dated disruptions. `announced: false` means the planner's forecast does not
-# include it (the simulator's truth does) — that is what "unannounced" means in the spec.
+# include it (the simulator's truth does) — that is what "unannounced" means.
 # Destination selectors: a dest_id, or "farthest" / "nearest" (by road distance from hub).
 
 defaults:
@@ -72,6 +72,6 @@ scenarios:
     events: []
 
 sources:
-  harvest_glut: "spec §8; magnitude cf. Kolar tomato ₹2.60/kg low (Jul 2021)"
+  harvest_glut: "magnitude cf. Kolar tomato ₹2.60/kg low (Jul 2021)"
   price_crash: "Lasalgaon onion ≈ ₹4,500 → ₹1,500/quintal after export ban (global-agriculture.com)"
   festival_peak: "Deepavali 2025 date from kalagana / Drik Panchang"

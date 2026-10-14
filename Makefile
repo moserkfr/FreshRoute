@@ -3,10 +3,13 @@
 PY ?= python
 ARGS ?=
 
-.PHONY: setup fit gen test eval api web lint schemas
+.PHONY: setup fetch fit gen test eval api web lint schemas
 
 setup:
 	$(PY) tasks.py setup $(ARGS)
+
+fetch:
+	$(PY) tasks.py fetch $(ARGS)
 
 fit:
 	$(PY) tasks.py fit $(ARGS)

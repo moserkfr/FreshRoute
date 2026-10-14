@@ -1,0 +1,8 @@
+origin_id,dest_id,distance_km,osrm_duration_h,source
+kolar_hub,blr_kr,68.8,1.05,osrm
+kolar_hub,blr_dc,40.2,0.63,osrm
+kolar_hub,mysuru,216.3,3.1,osrm
+kolar_hub,chennai_koyambedu,259.1,3.34,osrm
+kolar_hub,hyd_bowenpally,586.8,7.75,osrm
+kolar_hub,hubballi,481.0,5.9,osrm
+kolar_hub,malur_proc,36.4,0.58,osrm

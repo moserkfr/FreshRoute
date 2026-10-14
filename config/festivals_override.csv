@@ -1,1 +1,9 @@
-festival,date,regions,type
+festival,date,regions,type,source
+onam,2012-08-29,KL,harvest,"Thiruvonam 2012 (Kerala govt holiday list); kalagana has no 2012 Onam"
+deepavali,2013-11-03,ALL,hindu,"Diwali (Lakshmi Puja) 2013; kalagana has no 2013 Diwali"
+ugadi,2017-03-28,KA|AP|TS,hindu,"Ugadi 2017 (Karnataka govt holiday list); kalagana has no 2017 Ugadi"
+eid_al_fitr,2021-05-14,ALL,islamic,"India moon-sighted date (tabular Hijri gives 05-13)"
+eid_al_fitr,2024-04-11,ALL,islamic,"India moon-sighted date (tabular Hijri gives 04-10)"
+onam,2024-09-15,KL,harvest,"Thiruvonam 2024 (Kerala govt holiday list); kalagana gives 08-19"
+ugadi,2026-03-19,KA|AP|TS,hindu,"Ugadi 2026; kalagana has no 2026 Ugadi"
+navratri_start,2027-10-01,ALL,hindu,"derived: Vijayadashami 2027-10-10 minus 9 days; kalagana has no 2027 Sharad Navratri"

@@ -26,7 +26,7 @@ destinations:
     handling_cost_per_kg: 0.8
     min_quality_accepted: 0.3
     demand_weight: 2.4
-    agmarknet_market: "Bangalore"
+    agmarknet_markets: ["Bangalore", "Binny Mill (F&V), Bangalore"]
 
   - dest_id: blr_dc
     name: Bengaluru Retail DC (Hoskote)
@@ -39,7 +39,8 @@ destinations:
     handling_cost_per_kg: 0.5
     min_quality_accepted: 0.5
     demand_weight: 1.4
-    agmarknet_market: "Bangalore"
+    agmarknet_markets: ["Bangalore", "Binny Mill (F&V), Bangalore"]
+    price_premium: 1.08   # assumption: retail DC pays ~8% over mandi modal
 
   - dest_id: mysuru
     name: Mysuru APMC
@@ -52,7 +53,7 @@ destinations:
     handling_cost_per_kg: 0.8
     min_quality_accepted: 0.3
     demand_weight: 0.8
-    agmarknet_market: "Mysore"
+    agmarknet_markets: ["Mysore (Bandipalya)"]
 
   - dest_id: chennai_koyambedu
     name: Chennai Koyambedu
@@ -65,7 +66,11 @@ destinations:
     handling_cost_per_kg: 0.9
     min_quality_accepted: 0.3
     demand_weight: 0.9
-    agmarknet_market: "Koyambedu"
+    # proxy: Koyambedu is not reported in Agmarknet, and the Chennai-metro farmer markets that are
+    # report retail prices (onion ~₹60/kg vs ~₹18 wholesale). Bengaluru wholesale + a premium
+    # stands in for Koyambedu wholesale.
+    agmarknet_markets: ["Bangalore", "Binny Mill (F&V), Bangalore"]
+    price_premium: 1.10   # assumption: Koyambedu wholesale ≈ Bengaluru + 10% (larger, farther market)
 
   - dest_id: hyd_bowenpally
     name: Hyderabad Bowenpally
@@ -78,7 +83,7 @@ destinations:
     handling_cost_per_kg: 0.9
     min_quality_accepted: 0.3
     demand_weight: 0.4
-    agmarknet_market: "Bowenpally"
+    agmarknet_markets: ["Bowenpally", "Gudimalkapur"]
 
   - dest_id: hubballi
     name: Hubballi APMC
@@ -91,7 +96,7 @@ destinations:
     handling_cost_per_kg: 0.8
     min_quality_accepted: 0.3
     demand_weight: 0.3
-    agmarknet_market: "Hubli (Amaragol)"
+    agmarknet_markets: ["Hubli (Amaragol)"]
 
   - dest_id: malur_proc
     name: Malur Food Processing Unit
@@ -104,7 +109,8 @@ destinations:
     handling_cost_per_kg: 0.3
     min_quality_accepted: 0.15
     demand_weight: 0.8
-    agmarknet_market: null
+    agmarknet_markets: ["Malur", "Kolar"]
+    price_premium: 0.60   # assumption: processors pay ~60% of the local mandi modal
 
 sources:
   coordinates: "OpenStreetMap market locations (approximate)"

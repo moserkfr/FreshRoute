@@ -78,7 +78,7 @@ class GeneratorCfg(_Strict):
     grade_sd_frac: dict[Grade, float]
     cost_basis_frac: tuple[float, float]
     ambient_noise_sd_c: float = Field(ge=0)
-    placeholder_demand_to_supply: float = Field(gt=0)
+    demand_to_supply: float = Field(gt=0)
     placeholder_sigma_log_demand: float = Field(ge=0)
     placeholder_sigma_log_price: float = Field(ge=0)
     sources: Sources = {}
@@ -151,6 +151,7 @@ class MarketCfg(_Strict):
     horizon_days: int = Field(ge=1)
     fdi_window: tuple[int, int]
     fdi_bootstrap_resamples: int = Field(ge=100)
+    fdi_min_years: int = Field(ge=2)
     sources: Sources = {}
 
 
@@ -173,6 +174,47 @@ class EvaluationCfg(_Strict):
     sources: Sources = {}
 
 
+class AgmarknetSourceCfg(_Strict):
+    name: str
+    url: str
+    size_bytes: int = Field(gt=0)
+
+
+class DataCfg(_Strict):
+    """Where real market data comes from and which slice of it we keep."""
+
+    agmarknet_sources: list[AgmarknetSourceCfg] = Field(min_length=1)
+    agmarknet_states: list[str] = Field(min_length=1)
+    agmarknet_keywords: list[str] = Field(min_length=1)
+    osrm_url: str
+    region_of_state: dict[str, str]
+    hub_district: str                         # Agmarknet district of the hub (supply seasonality)
+    fit_train_years: tuple[int, int]
+    fit_min_months: int = Field(ge=24)        # monthly points a market series needs for STL
+    fit_price_years: int = Field(ge=1)        # base price = median of the last N train years
+    fit_weekday_closed_share: float = Field(gt=0, lt=1)  # weekday with < share of rows → closed
+    fit_holdout_year: int
+    sources: Sources = {}
+
+
+class FestivalCfg(_Strict):
+    """One festival: how to find it in kalagana and which regions observe it."""
+
+    id: str
+    tradition: str                      # kalagana rule set that contains the festival
+    match: str                          # kalagana festival name (exact)
+    rule: Literal["on", "friday_before"] = "on"   # friday_before: last Friday before `match`
+    regions: list[str] = Field(min_length=1)       # region codes, or ["all"]
+    type: Literal["hindu", "islamic", "christian", "harvest"]
+
+
+class CalendarCfg(_Strict):
+    location: str
+    years: tuple[int, int]
+    festivals: list[FestivalCfg] = Field(min_length=1)
+    sources: Sources = {}
+
+
 class DefaultCfg(_Strict):
     seeds: SeedsCfg
     simulation: SimulationCfg
@@ -183,6 +225,8 @@ class DefaultCfg(_Strict):
     market: MarketCfg
     planner: PlannerCfg
     evaluation: EvaluationCfg
+    data: DataCfg
+    calendar: CalendarCfg
 
 
 # ------------------------------------------------------------ commodities.yaml
@@ -200,6 +244,7 @@ class CommodityCfg(_Strict):
     storage_cost_per_kg_day: float = Field(ge=0)
     min_sellable_quality: float = Field(ge=0, le=1)
     harvest_age_max_days: float = Field(ge=0)
+    agmarknet_names: list[str] = []   # Agmarknet commodity names (exact) pooled for fitting
     source: str = Field(min_length=3)
 
 
@@ -231,7 +276,8 @@ class DestinationCfg(_Strict):
     handling_cost_per_kg: float = Field(ge=0)
     min_quality_accepted: float = Field(ge=0, le=1)
     demand_weight: float = Field(gt=0)
-    agmarknet_market: str | None = None
+    agmarknet_markets: list[str] = []   # Agmarknet market names whose prices this destination sees
+    price_premium: float = Field(default=1.0, gt=0)  # × market price (retail DC, processor)
 
     @model_validator(mode="after")
     def _window(self) -> DestinationCfg:

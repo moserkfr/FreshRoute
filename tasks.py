@@ -70,6 +70,16 @@ def t_schemas(extra: list[str]) -> int:
     return run([venv_python(), "-m", "freshroute.schemas", "--export", *extra])
 
 
+def t_fetch(extra: list[str]) -> int:
+    """Download real data: Agmarknet slice (~75 min stream), OSRM distances, festival calendar."""
+    for module in ("freshroute.fetch_osrm", "freshroute.calendar_features",
+                   "freshroute.fetch_agmarknet"):
+        rc = run([venv_python(), "-m", module, *extra])
+        if rc:
+            return rc
+    return 0
+
+
 def t_fit(extra: list[str]) -> int:
     return module_cmd("freshroute.fit_market", "M2", extra)
 
@@ -99,6 +109,7 @@ def t_web(extra: list[str]) -> int:
 
 TARGETS = {
     "setup": t_setup,
+    "fetch": t_fetch,
     "fit": t_fit,
     "gen": t_gen,
     "test": t_test,

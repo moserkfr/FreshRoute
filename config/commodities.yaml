@@ -19,6 +19,9 @@ commodities:
     storage_cost_per_kg_day: 0.30
     min_sellable_quality: 0.15
     harvest_age_max_days: 0.5   # assumption: same/next-day arrival at the aggregator
+    # proxy: spinach is almost absent from Agmarknet (8 rows 2021–26); green onion, the closest
+    # leafy and highly perishable crop with good coverage, supplies its price and demand pattern.
+    agmarknet_names: ["Spinach", "Palak", "Onion Green"]
     source: "USDA HB66 via UGA storage table (10–14 d at 0 °C); costs: assumption"
 
   - id: tomato
@@ -32,6 +35,7 @@ commodities:
     storage_cost_per_kg_day: 0.20
     min_sellable_quality: 0.15
     harvest_age_max_days: 0.5   # assumption: same/next-day arrival at the aggregator
+    agmarknet_names: ["Tomato"]
     source: "USDA HB66 via UGA (4–7 d at 10 °C, chilling < 10 °C); costs: assumption"
 
   - id: okra
@@ -45,6 +49,7 @@ commodities:
     storage_cost_per_kg_day: 0.20
     min_sellable_quality: 0.15
     harvest_age_max_days: 0.75   # assumption: same/next-day arrival at the aggregator
+    agmarknet_names: ["Bhindi(Ladies Finger)", "Bhindi (Ladies Finger)", "Ladies Finger"]
     source: "USDA HB66 via UGA (7–10 d, chilling < 7 °C); costs: assumption"
 
   - id: mango
@@ -58,6 +63,7 @@ commodities:
     storage_cost_per_kg_day: 0.25
     min_sellable_quality: 0.15
     harvest_age_max_days: 1.5   # assumption: same/next-day arrival at the aggregator
+    agmarknet_names: ["Mango", "Mango (Raw-Ripe)", "Mango(Raw-Ripe)"]
     source: "ITFNet mango post-harvest (13 °C, chilling < 13 °C, 4–10 d ambient); costs: assumption"
 
   - id: cabbage
@@ -71,6 +77,7 @@ commodities:
     storage_cost_per_kg_day: 0.10
     min_sellable_quality: 0.15
     harvest_age_max_days: 1.0   # assumption: same/next-day arrival at the aggregator
+    agmarknet_names: ["Cabbage"]
     source: "USDA HB66 via UGA (3–6 weeks at 0 °C); costs: assumption"
 
   - id: onion
@@ -84,4 +91,5 @@ commodities:
     storage_cost_per_kg_day: 0.05
     min_sellable_quality: 0.15
     harvest_age_max_days: 3.0
+    agmarknet_names: ["Onion"]
     source: "USDA HB66 via UGA (1–8 months at 0 °C; 60 d used for simulation); costs: assumption"

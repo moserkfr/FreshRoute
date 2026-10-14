@@ -32,12 +32,12 @@ simulation:
 generator:
   # Daily volume arriving at the hub per commodity (kg) before seasonality/regime/scenario.
   base_daily_supply_kg:
-    spinach: 3000
-    tomato: 9000
-    okra: 4000
-    mango: 6000
-    cabbage: 6000
-    onion: 8000
+    spinach: 1950
+    tomato: 5850
+    okra: 2600
+    mango: 3900
+    cabbage: 3900
+    onion: 5200
   supply_noise_sd: 0.15          # log-sd of day-to-day volume
   qty_median_kg: 600             # batch size lognormal median
   qty_sigma: 0.6                 # batch size lognormal sigma
@@ -48,20 +48,20 @@ generator:
   grade_sd_frac: {A: 0.10, B: 0.15, C: 0.20}   # remaining-life sd as a fraction of the mean
   cost_basis_frac: [0.60, 0.75]                # of forecast base price
   ambient_noise_sd_c: 1.5                      # day-to-day sd of true ambient around the forecast
-  # Placeholder market only (ignored once Agmarknet is fitted): demand the hub can sell across
-  # all destinations, as a multiple of its supply.
-  placeholder_demand_to_supply: 2.0
+  # Demand the hub can sell across all destinations, as a multiple of its supply (sets B_D for
+  # both fitted and placeholder market data; Agmarknet gives the shape, not this level).
+  demand_to_supply: 3.0
   placeholder_sigma_log_demand: 0.10           # day-to-day log-sd of true demand per (dest, commodity)
   placeholder_sigma_log_price: 0.10
   sources:
-    base_daily_supply_kg: "assumption: mid-size Kolar aggregator (~36 t/day) sized to the 42 t fleet"
+    base_daily_supply_kg: "assumption: Kolar aggregator averaging ~23 t/day; with fitted seasonality the July mango+tomato peak (~31 t/day) fits the 48 t/day fleet"
     qty: "assumption: batch qty lognormal, 200–2,000 kg"
     grade_sd_frac: "assumption: sd 10–20% of mean, grade-dependent"
     cost_basis_frac: "assumption: cost basis 60–75% of forecast base price"
     grade_probs: "assumption"
     ambient_noise_sd_c: "assumption"
     placeholder_sigma_log: "assumption: placeholder noise until fitted from Agmarknet residuals (M2)"
-    placeholder_demand_to_supply: "assumption: a mid-size aggregator is a small share of mandi arrivals, so the markets absorb ~2× its supply; placeholder until Agmarknet volumes are fitted"
+    demand_to_supply: "assumption: one aggregator is a small share of mandi arrivals, so the markets absorb ~3× its supply"
     grade_life_mult: "assumption"
 
 shelf_life:
@@ -114,6 +114,7 @@ market:
   horizon_days: 3                    # H: forecast + hold-value look-ahead
   fdi_window: [-7, 2]                # festival offsets τ studied (days)
   fdi_bootstrap_resamples: 1000
+  fdi_min_years: 3                   # a festival effect needs ≥ 3 years observed to be kept
   sources:
     demand_price_elasticity: "assumption: −0.4 (range −0.3…−0.6)"
     horizon_days: "assumption: H = 3 days look-ahead"
@@ -140,3 +141,55 @@ evaluation:
   sources:
     bootstrap_resamples: "assumption: percentile bootstrap, 2,000 resamples"
     baseline: "B1 is the documented baseline"
+
+data:
+  # Agmarknet daily arrivals + prices per market, republished as bulk CSV by India Data Portal
+  # (ODC-By). The fetcher streams these and keeps only the rows below, so the multi-GB files
+  # never land on disk. Output: data/raw/agmarknet_south.csv (gitignored).
+  agmarknet_sources:
+    - name: old_source        # 2021-01-01 .. 2025-10-26
+      url: "https://ckandev.indiadataportal.com/dataset/1749d812-35b4-4635-ac29-dd3116ed31b0/resource/21ecb9f0-7bf9-42d0-af24-df2e230e4a0a/download/apmc-arrivals-and-prices-old-source.csv"
+      size_bytes: 4233268613
+    - name: new_source        # 2025-10-27 .. 2026-05-31
+      url: "https://ckandev.indiadataportal.com/dataset/1749d812-35b4-4635-ac29-dd3116ed31b0/resource/078fd1ea-dab6-4aca-aed9-3a4b8b2c761d/download/apmc-arrivals-and-prices-new-source.csv"
+      size_bytes: 802731921
+  agmarknet_states: [Karnataka, Tamil Nadu, Telangana, Andhra Pradesh, Kerala]
+  # Case-insensitive substrings of commodity_name kept by the fetcher; exact names are chosen
+  # per commodity at fit time.
+  agmarknet_keywords: [tomato, onion, spinach, palak, bhindi, ladies, okra, cabbage, mango]
+  # Road distances hub → destinations (public OSRM demo server, driving profile).
+  osrm_url: "https://router.project-osrm.org"
+  hub_district: Kolar
+  region_of_state: {Karnataka: KA, Tamil Nadu: TN, Telangana: TS, Andhra Pradesh: AP, Kerala: KL}
+  fit_train_years: [2021, 2024]      # fit seasonality / weekday / festival effects on these
+  fit_holdout_year: 2025             # forecast WAPE (full vs no_calendar) is measured here
+  fit_min_months: 36                 # a market series needs ≥ 36 of 48 train months for STL
+  fit_price_years: 2                 # base price level = median of the last 2 train years
+  fit_weekday_closed_share: 0.3      # weekday with < 30% of the busiest weekday's rows = reporting gap → factor 1
+  sources:
+    agmarknet_sources: "India Data Portal, Agriculture Marketing (APMC arrivals and prices), ODC-By — https://ckandev.indiadataportal.com/dataset/agriculture-marketing"
+    fit_holdout_year: "last complete festival year in the data"
+    osrm_url: "OSRM (BSD-2), OpenStreetMap data © OpenStreetMap contributors (ODbL)"
+
+calendar:
+  # Festival dates come from kalagana (computed for Bengaluru); config/festivals_override.csv
+  # wins when it lists the same festival and year (e.g. a moon-sighting-dependent Eid date).
+  location: bengaluru
+  years: [2010, 2027]
+  festivals:
+    - {id: sankranti_pongal, tradition: kannada, match: Makar Sankranti, regions: [KA, TN, AP, TS], type: harvest}
+    - {id: ugadi, tradition: kannada, match: Ugadi, regions: [KA, AP, TS], type: hindu}
+    - {id: ramzan_start, tradition: kannada, match: Ramadan Begins, regions: [all], type: islamic}
+    - {id: eid_al_fitr, tradition: kannada, match: Eid al-Fitr, regions: [all], type: islamic}
+    - {id: varamahalakshmi, tradition: north, match: Raksha Bandhan, rule: friday_before, regions: [KA, TN, AP, TS], type: hindu}
+    - {id: ganesh_chaturthi, tradition: north, match: Ganesh Chaturthi, regions: [all], type: hindu}
+    - {id: onam, tradition: kannada, match: Onam, regions: [KL], type: harvest}
+    - {id: navratri_start, tradition: north, match: Sharad Navratri, regions: [all], type: hindu}
+    - {id: dasara, tradition: north, match: Dussehra, regions: [all], type: hindu}
+    - {id: deepavali, tradition: north, match: Diwali, regions: [all], type: hindu}
+    - {id: christmas, tradition: kannada, match: Christmas, regions: [all], type: christian}
+  sources:
+    festivals: "kalagana 0.1.3 (MIT) festival rules, Bengaluru; Islamic dates are tabular Hijri (±1–2 d)"
+    varamahalakshmi: "observed on the Friday before Shravana Purnima (Raksha Bandhan)"
+    regions: "assumption: regional observance (Pongal TN, Ugadi KA/AP/TS, Onam KL, others all)"
+

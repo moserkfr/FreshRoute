@@ -244,7 +244,7 @@ def write_placeholders(cfg: AppConfig, directory: Path | None = None) -> list[Pa
                        "chennai_koyambedu": 1.12, "hyd_bowenpally": 1.15, "hubballi": 1.03,
                        "malur_proc": 0.60}
     g = cfg.default.generator
-    demand_to_supply = g.placeholder_demand_to_supply
+    demand_to_supply = g.demand_to_supply
     dests = cfg.network.destinations
     wsum = sum(d.demand_weight for d in dests)
     rows = []

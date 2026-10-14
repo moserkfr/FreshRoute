@@ -124,11 +124,12 @@ def build_fleet(cfg: AppConfig) -> list[Vehicle]:
 
 
 def to_commodity(c) -> Commodity:  # CommodityCfg → schema
-    return Commodity(**c.model_dump(exclude={"harvest_age_max_days"}))
+    return Commodity(**c.model_dump(exclude={"harvest_age_max_days", "agmarknet_names"}))
 
 
 def to_destination(d) -> Destination:
-    return Destination(**d.model_dump(exclude={"demand_weight", "agmarknet_market"}))
+    fit_only = {"demand_weight", "agmarknet_markets", "price_premium"}
+    return Destination(**d.model_dump(exclude=fit_only))
 
 
 # -------------------------------------------------------------------- instance
@@ -203,6 +204,18 @@ class Instance:
 # ------------------------------------------------------------------ generation
 
 
+def effective_regime(ov) -> str | None:
+    """Regime whose fitted multipliers apply on top of the scenario.
+
+    A scenario that states its own supply/price multipliers (harvest_glut: +60% arrivals,
+    −25% prices) gives the *total* effect; its regime label is descriptive and the fitted
+    regime factors are not applied again, otherwise the shock would be counted twice.
+    """
+    if ov.supply_mult != 1.0 or ov.price_mult != 1.0:
+        return None
+    return ov.regime
+
+
 def _resolve_events(cfg: AppConfig, sc: ScenarioCfg, lanes: list[Lane], seed: int) -> list[dict]:
     """Turn scenario events into concrete ones (selectors → dest_id, ranges → realised values)."""
     by_dist = sorted(lanes, key=lambda ln: ln.distance_km)
@@ -261,7 +274,8 @@ def _market_table(cfg: AppConfig, mp: MarketParams, sc: ScenarioCfg, start: date
         for dest in cfg.network.destinations:
             for c in cfg.commodities:
                 kw = dict(params=mp, dest_id=dest.dest_id, region=dest.region,
-                          commodity_id=c.id, d=d, regime=ov.regime, price_mult=ov.price_mult)
+                          commodity_id=c.id, d=d, regime=effective_regime(ov),
+                          price_mult=ov.price_mult)
                 full = expected(**kw, include_calendar=True)
                 nocal = expected(**kw, include_calendar=False)
                 # Truth festival effect = fitted estimate + error drawn within its CI, one draw
@@ -315,7 +329,7 @@ def _batches(cfg: AppConfig, mp: MarketParams, sc: ScenarioCfg, start: date, day
             rng = rng_for(seed, "batches", day, ci)
             life_rng = rng_for(seed, "life", day, ci)
             _, _, s_supply = mp.season_factor(c.id, d)
-            _, r_supply, _ = mp.regime_factor(ov.regime)
+            _, r_supply, _ = mp.regime_factor(effective_regime(ov))
             vol = (g.base_daily_supply_kg[c.id] * s_supply * r_supply * ov.supply_mult
                    * math.exp(rng.normal(-0.5 * g.supply_noise_sd**2, g.supply_noise_sd)))
             base_price = float(np.mean([mp.base_level(m, c.id)[0] for m in mandi_ids]))

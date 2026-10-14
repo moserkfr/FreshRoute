@@ -1,0 +1,127 @@
+{
+ "fitted_on": "2026-10-14",
+ "raw_rows": 1151021,
+ "date_range": [
+  "2021-01-01",
+  "2026-05-31"
+ ],
+ "train_years": [
+  2021,
+  2024
+ ],
+ "rows_per_commodity": {
+  "spinach": 31318,
+  "tomato": 133924,
+  "okra": 124220,
+  "mango": 47546,
+  "cabbage": 115360,
+  "onion": 107142
+ },
+ "destination_markets_missing": [],
+ "base_price_fallbacks": [
+  "blr_kr/spinach: all-market median",
+  "blr_dc/spinach: all-market median",
+  "mysuru/spinach: all-market median",
+  "chennai_koyambedu/spinach: region median",
+  "hubballi/spinach: all-market median",
+  "malur_proc/spinach: all-market median",
+  "hubballi/tomato: region median",
+  "hubballi/okra: region median",
+  "malur_proc/okra: region median",
+  "hyd_bowenpally/mango: region median",
+  "hubballi/mango: region median",
+  "malur_proc/mango: region median",
+  "hubballi/cabbage: region median"
+ ],
+ "seasonality_missing": {
+  "s_supply": [
+   "mango",
+   "spinach"
+  ]
+ },
+ "festival_effects_kept": 335,
+ "festival_effects_by_festival": {
+  "christmas": 35,
+  "dasara": 41,
+  "deepavali": 31,
+  "eid_al_fitr": 35,
+  "ganesh_chaturthi": 36,
+  "navratri_start": 19,
+  "onam": 26,
+  "ramzan_start": 37,
+  "sankranti_pongal": 28,
+  "ugadi": 26,
+  "varamahalakshmi": 21
+ },
+ "regime": [
+  {
+   "regime": "glut",
+   "r_price": 0.9503,
+   "r_supply": 1.2127,
+   "r_demand": 1.0
+  },
+  {
+   "regime": "normal",
+   "r_price": 0.9928,
+   "r_supply": 1.0,
+   "r_demand": 1.0
+  },
+  {
+   "regime": "scarcity",
+   "r_price": 1.0233,
+   "r_supply": 0.8285,
+   "r_demand": 1.0
+  }
+ ],
+ "noise": [
+  {
+   "commodity_id": "spinach",
+   "sigma_log_demand": 0.3464,
+   "sigma_log_price": 0.1562,
+   "n_obs": 2197
+  },
+  {
+   "commodity_id": "tomato",
+   "sigma_log_demand": 0.1768,
+   "sigma_log_price": 0.1298,
+   "n_obs": 5810
+  },
+  {
+   "commodity_id": "okra",
+   "sigma_log_demand": 0.2087,
+   "sigma_log_price": 0.1413,
+   "n_obs": 4639
+  },
+  {
+   "commodity_id": "mango",
+   "sigma_log_demand": 0.4596,
+   "sigma_log_price": 0.129,
+   "n_obs": 378
+  },
+  {
+   "commodity_id": "cabbage",
+   "sigma_log_demand": 0.2136,
+   "sigma_log_price": 0.0802,
+   "n_obs": 5822
+  },
+  {
+   "commodity_id": "onion",
+   "sigma_log_demand": 0.3594,
+   "sigma_log_price": 0.0957,
+   "n_obs": 5351
+  }
+ ],
+ "holdout_wape": {
+  "full": {
+   "WAPE_overall": 0.4233,
+   "WAPE_festival_window": 0.5104
+  },
+  "no_calendar": {
+   "WAPE_overall": 0.4234,
+   "WAPE_festival_window": 0.5109
+  },
+  "n_days": 4616,
+  "n_festival_window_days": 1761,
+  "holdout_year": 2025
+ }
+}

@@ -48,7 +48,7 @@ from freshroute.feasibility import (
     quality_p10,
     sellable_margin,
 )
-from freshroute.logistics import estimate_trip
+from freshroute.logistics import estimate_trip, planning_travel_h
 from freshroute.schemas import State, Vehicle
 from freshroute.shelf_life import consumption_rate, price_multiplier, quality
 
@@ -123,7 +123,9 @@ def hold_values(state: State, cfg: AppConfig) -> dict[tuple[str, str], float]:
                     if v is None:
                         continue
                     trip = estimate_trip(d=day, lane=ln, dest=d, commodity=c, vehicle=v,
-                                         ambient_c=state.ambient_temp_c, cfg=cfg)
+                                         ambient_c=state.ambient_temp_c, cfg=cfg,
+                                         travel_h=planning_travel_h(ln, risk_p)
+                                         if pc.window_risk else None)
                     dl = trip.delta_life_days
                     if sellable_margin(aged, c, dl, risk_p) < pc.safety_margin_days:
                         continue

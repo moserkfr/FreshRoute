@@ -395,3 +395,23 @@ def run(instance: Instance, planner: Planner, cfg: AppConfig | None = None,
     """Simulate ``planner`` on ``instance``."""
     return Simulator(instance, planner, cfg, replan=replan, risk_p=risk_p).run()
 
+
+
+class _ForecastOnly:
+    """Stand-in planner that only tells the State builder which forecast to use."""
+
+    name = "none"
+
+    def __init__(self, forecast_mode: str):
+        self.forecast_mode = forecast_mode
+
+    def plan(self, state: State, cfg: AppConfig) -> Plan:  # pragma: no cover - never called
+        raise NotImplementedError
+
+
+def initial_state(instance: Instance, cfg: AppConfig | None = None, forecast_mode: str = "full",
+                  risk_p: float | None = None) -> State:
+    """The day-0 morning State a planner would receive (day-0 arrivals in stock)."""
+    sim = Simulator(instance, _ForecastOnly(forecast_mode), cfg, replan=False, risk_p=risk_p)
+    sim._receive(0, DayOutcome(day=0, date=instance.start_date))
+    return sim.build_state(0)

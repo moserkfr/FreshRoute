@@ -36,7 +36,7 @@ from freshroute.shelf_life import consumption_rate
 log = logging.getLogger(__name__)
 
 GENERATED_DIR = REPO_ROOT / "data" / "generated"
-DISTANCE_MATRIX = REPO_ROOT / "data" / "raw" / "distance_matrix.csv"
+DISTANCE_MATRIX = REPO_ROOT / "data" / "processed" / "distance_matrix.csv"  # fetch_osrm.py
 
 # Random sub-stream ids. Never renumber: it would change every generated instance.
 STREAM = {"batches": 1, "market": 2, "life": 3, "delays": 4, "events": 5, "ambient": 6,

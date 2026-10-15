@@ -58,7 +58,7 @@ class FreshRoutePlanner:
 
     def plan(self, state: State, cfg: AppConfig) -> Plan:
         t0 = time.perf_counter()
-        feas = feasibility.build(state, cfg)
+        feas = feasibility.build(state, cfg, window_risk=cfg.default.planner.window_risk)
         arrivals = self._expected_arrivals(state)
         try:
             res = milp.solve(state, cfg, feas, self.time_limit_s, arrivals)

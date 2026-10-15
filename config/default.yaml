@@ -132,6 +132,10 @@ planner:
   festival_guard_fdi: 0.10           # discount-engine festival guard threshold
   festival_guard_days: 2
   safety_margin_days: 0.01           # planner keeps 0.01 ref-day inside the validator's limits
+  # Our planner books each load on the day it arrives with probability risk_p (travel time
+  # mean + z·sd), not on the mean arrival: a load that may miss today's receive window is
+  # planned as a next-morning sale (and charged the extra life). Baselines keep the mean.
+  window_risk: true
   # Oversupply is priced by the chance it still sells: each segment of shipped kg (as a multiple
   # of forecast demand) earns revenue × P(demand exceeds it) and loses disposal otherwise.
   demand_breakpoints: [0.5, 0.7, 0.85, 1.0, 1.15, 1.3, 1.5, 1.75, 2.0, 2.5]
@@ -144,6 +148,7 @@ planner:
     risk_p: "assumption: p = 0.9"
     time_limit_s: "assumption: 60 s safety net; typical solve < 7 s"
     node_limit: "assumption: 1000 nodes (hardest observed solve uses < 60)"
+    window_risk: "assumption: same risk_p as the shelf-life chance constraint"
     fairness_phi: "assumption: φ = 0.6"
     festival_guard_fdi: "assumption: 10% demand uplift counts as a festival signal"
     clearance: "assumption: local clearance at 35% for stock about to cross q 0.3"
@@ -167,6 +172,18 @@ evaluation:
     bootstrap_resamples: "assumption: percentile bootstrap, 2,000 resamples"
     baseline: "B1 is the documented baseline"
     sensitivity: "±20% on Q10, shelf-life sd, delay probability, demand σ, price σ, ε_d, freight cost"
+
+api:
+  cors_origins: ["http://localhost:5173", "http://127.0.0.1:5173"]   # Vite dev server
+  instance_cache_size: 16            # generated instances kept in memory (scenario, seed, start)
+  simulate_max_days: 30              # /simulate refuses longer runs (a 14-day run of ours ≈ 1 min)
+  pulse:
+    history_days: 7                  # momentum = log-price slope over the last 7 observed days
+    momentum_flat_pct: 5.0           # |weekly change| < 5% → flat arrow
+    regime_z: 1.0                    # price ≥ 1 σ below / above the seasonal norm → glut / scarcity
+    radar_days: 14                   # festival radar looks 14 days ahead
+  sources:
+    pulse: "assumption: display thresholds for the market-pulse panel (not used by planners)"
 
 data:
   # Agmarknet daily arrivals + prices per market, republished as bulk CSV by India Data Portal

@@ -168,6 +168,7 @@ class PlannerCfg(_Strict):
     festival_guard_fdi: float = Field(ge=0)
     festival_guard_days: int = Field(ge=0)
     safety_margin_days: float = Field(ge=0)       # slack inside the validator's life rules
+    window_risk: bool                             # sale day from the risk_p travel time
     demand_breakpoints: list[float] = Field(min_length=2)  # × forecast demand: sell-prob segments
     min_alloc_kg: float = Field(gt=0)             # smaller MILP shares are dropped
     clearance_quality: float = Field(ge=0, le=1)  # held stock below this tomorrow → clear
@@ -192,6 +193,22 @@ class EvaluationCfg(_Strict):
     replan_scenarios: list[str] = Field(min_length=1)
     replan_planners: list[str] = Field(min_length=1)
     sensitivity: SensitivityCfg
+    sources: Sources = {}
+
+
+class PulseCfg(_Strict):
+    history_days: int = Field(ge=2)          # observed days used for the momentum slope
+    momentum_flat_pct: float = Field(ge=0)   # |weekly change| below this → "flat"
+    regime_z: float = Field(gt=0)            # |price z| at or above this → glut / scarcity flag
+    radar_days: int = Field(ge=1)            # festival radar look-ahead
+    sources: Sources = {}
+
+
+class ApiCfg(_Strict):
+    cors_origins: list[str] = []
+    instance_cache_size: int = Field(ge=1)
+    simulate_max_days: int = Field(ge=1)
+    pulse: PulseCfg
     sources: Sources = {}
 
 
@@ -246,6 +263,7 @@ class DefaultCfg(_Strict):
     market: MarketCfg
     planner: PlannerCfg
     evaluation: EvaluationCfg
+    api: ApiCfg
     data: DataCfg
     calendar: CalendarCfg
 

@@ -10,6 +10,10 @@ kg at the arrival date. An option survives only if
   * arrival quality p10 ≥ the destination's minimum,
   * the arrival date is inside the forecast horizon.
 
+With ``window_risk`` (our planner) the trip uses the risk_p travel time, so a load that may
+miss today's receive window is valued as a next-morning sale. Allocations still carry the
+mean ETA, which is what the validator checks; the planner's view is only more conservative.
+
 The chance and quality checks use the same rules as the validator plus a small safety margin
 (``planner.safety_margin_days``), so rounding never turns an accepted option into a violation.
 """
@@ -20,7 +24,7 @@ from dataclasses import dataclass
 from datetime import date
 
 from freshroute.config import AppConfig
-from freshroute.logistics import estimate_trip
+from freshroute.logistics import estimate_trip, planning_travel_h
 from freshroute.schemas import Batch, Commodity, Destination, Lane, State, Vehicle
 from freshroute.shelf_life import life_quantile, price_multiplier, quality, z_value
 
@@ -75,7 +79,9 @@ def quality_p10(b: Batch, c: Commodity, delta: float) -> float:
         / c.shelf_life_ref_days
 
 
-def build(state: State, cfg: AppConfig) -> FeasibleSet:
+def build(state: State, cfg: AppConfig, window_risk: bool = False) -> FeasibleSet:
+    """``window_risk``: trips use the risk_p travel time (``planning_travel_h``) instead of the
+    mean — the sale day, eta hour and life used are then the late-but-plausible ones."""
     pc = cfg.default.planner
     risk_p = float(state.config_snapshot.get("risk_p", pc.risk_p))
     margin = pc.safety_margin_days
@@ -106,7 +112,9 @@ def build(state: State, cfg: AppConfig) -> FeasibleSet:
                     continue
                 group = c.temp_group if v.type == "reefer" else None
                 trip = estimate_trip(d=state.date, lane=lane, dest=d, commodity=c, vehicle=v,
-                                     ambient_c=state.ambient_temp_c, cfg=cfg)
+                                     ambient_c=state.ambient_temp_c, cfg=cfg,
+                                     travel_h=planning_travel_h(lane, risk_p) if window_risk
+                                     else None)
                 arr = trip.eta.date()
                 if (dest_id, c.id, arr) not in fc:
                     reject("beyond_horizon")

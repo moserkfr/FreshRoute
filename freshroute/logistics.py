@@ -17,7 +17,7 @@ from typing import Protocol
 
 from freshroute.config import AppConfig
 from freshroute.schemas import IST, Commodity, Destination, Lane, Plan, State, Vehicle
-from freshroute.shelf_life import trip_delta_life
+from freshroute.shelf_life import trip_delta_life, z_value
 
 
 class Planner(Protocol):
@@ -54,6 +54,16 @@ def cargo_temp_c(vehicle: Vehicle, group: str | None, ambient_c: float, cfg: App
     if vehicle.type == "reefer" and group is not None:
         return cfg.fleet.reefer_setpoints_c[group]  # type: ignore[index]
     return ambient_c
+
+
+def planning_travel_h(lane: Lane, risk_p: float) -> float:
+    """Travel hours not exceeded with probability ≈ ``risk_p`` (mean + z·sd, normal approx.).
+
+    Used to decide *which day* a load is sold on. A lane whose mean arrival lands just before
+    a market closes (Kolar → Chennai: 13:44 vs 14:00) misses the window on most delayed legs;
+    planning the sale on the mean arrival books stock against the wrong day's demand.
+    """
+    return lane.travel_time_h_mean + max(z_value(risk_p), 0.0) * lane.travel_time_h_sd
 
 
 @dataclass(frozen=True)

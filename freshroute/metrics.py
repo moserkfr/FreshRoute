@@ -89,7 +89,11 @@ def run_metrics(r: RunResult, festival_dates: Iterable[date] = ()) -> dict:
         "spoilage_pct": _ratio(spoiled_kg(days), received),
         "spoilage_pct_worst": _ratio(spoiled_kg(days) + (days[-1].held_end_kg if days else 0.0),
                                      received),
-        "fulfilment_pct": _ratio(sold, demand),
+        # demand is counted on delivery days only, so only sales on those days fill it
+        "fulfilment_pct": _ratio(sum(dest_sold.values()), demand),
+        # demand is 3× supply by design, so no planner can pass received ÷ demand; this is the
+        # share of what the hub's stock could have filled
+        "fulfilment_of_possible_pct": _ratio(sum(dest_sold.values()), min(demand, received)),
         "fulfilment_by_dest": per_dest,
         "fulfilment_min_dest": min(per_dest.values()) if per_dest else 0.0,
         "revenue_inr": revenue,

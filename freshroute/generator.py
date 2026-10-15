@@ -31,7 +31,7 @@ from scipy.stats import truncnorm
 from freshroute.config import REPO_ROOT, AppConfig, ScenarioCfg, ScenarioEvent, load_config
 from freshroute.market_model import MarketParams, expected, load_market_params
 from freshroute.schemas import IST, Commodity, Destination, Lane, Vehicle
-from freshroute.shelf_life import consumption_rate
+from freshroute.shelf_life import batch_life
 
 log = logging.getLogger(__name__)
 
@@ -316,7 +316,6 @@ def _batches(cfg: AppConfig, mp: MarketParams, sc: ScenarioCfg, start: date, day
     g = cfg.default.generator
     ov = sc.overrides
     hub_temp = cfg.default.cost.hub_storage_temp_c + ov.ambient_delta_c
-    chill = cfg.default.shelf_life.chill_penalty
     dispatch = time(cfg.default.simulation.dispatch_hour)
     grades = list(g.grade_probs)
     gprobs = np.array([g.grade_probs[x] for x in grades])
@@ -333,7 +332,6 @@ def _batches(cfg: AppConfig, mp: MarketParams, sc: ScenarioCfg, start: date, day
             vol = (g.base_daily_supply_kg[c.id] * s_supply * r_supply * ov.supply_mult
                    * math.exp(rng.normal(-0.5 * g.supply_noise_sd**2, g.supply_noise_sd)))
             base_price = float(np.mean([mp.base_level(m, c.id)[0] for m in mandi_ids]))
-            rate = consumption_rate(hub_temp, c, chill)
             total, i = 0.0, 0
             while total < vol:
                 qty = float(np.clip(rng.lognormal(math.log(g.qty_median_kg), g.qty_sigma),
@@ -343,8 +341,8 @@ def _batches(cfg: AppConfig, mp: MarketParams, sc: ScenarioCfg, start: date, day
                     break
                 grade = grades[int(rng.choice(len(grades), p=gprobs))]
                 age = float(rng.uniform(0.0, c.harvest_age_max_days))
-                mean = c.shelf_life_ref_days * g.grade_life_mult[grade] - age * rate
-                sd = g.grade_sd_frac[grade] * max(mean, 0.0) * ov.life_sd_mult
+                mean, sd = batch_life(c, grade, age, hub_temp, cfg)
+                sd *= ov.life_sd_mult
                 actual = max(0.0, float(life_rng.normal(mean, sd)))
                 rows.append({
                     "day": day,

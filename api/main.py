@@ -10,6 +10,7 @@ Endpoints
   GET  /eval/latest     latest evaluation report (reports/final/ first, then reports/)
   GET  /market/pulse    price vs seasonal norm, momentum, festival radar, regime flag
   GET/POST /reviews     reviews left on the web landing page (var/reviews.jsonl)
+  POST /stock/state     a seller's own batches → a plannable day-0 State
 
 Rules carried over from the evaluation: seeds ≥ ``seeds.hidden_min`` are refused (the hidden
 set stays locked until the final run), every plan goes through the same validator as in the
@@ -22,7 +23,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import date
+from datetime import date, datetime
 from functools import cache, lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -39,8 +40,9 @@ from freshroute.generator import Instance, generate
 from freshroute.market_model import MarketParams, load_market_params
 from freshroute.metrics import run_metrics
 from freshroute.pulse import PulseResponse, market_pulse
-from freshroute.schemas import Plan, RunResult, SolverMeta, State
+from freshroute.schemas import IST, Plan, RunResult, SolverMeta, State
 from freshroute.simulator import initial_state, run
+from freshroute.stock import StockBatch, StockError, StockRow, build_state
 from freshroute.validator import validate
 from freshroute.whatif import (
     PlanDiff,
@@ -174,6 +176,24 @@ class WhatIfResponse(_Model):
     plan: Plan
     previous_plan: Plan
     diff: PlanDiff
+
+
+class StockRequest(_Model):
+    batches: list[StockBatch] = Field(min_length=1)
+    plan_date: date | None = Field(default=None, description="planning day; None = today (IST)")
+    forecast_mode: ForecastMode = "full"
+    risk_p: RiskP = None
+
+
+class StockResponse(_Model):
+    plan_date: date
+    state: State = Field(description="plannable State: the seller's batches on the base world")
+    rows: list[StockRow]
+    excluded_kg: float = Field(description="kg already below sellable quality (not planned)")
+    base: str = Field(description="where fleet, lanes and forecasts come from")
+    base_scenario_id: str
+    base_seed: int
+    hub_temp_c: float = Field(description="storage temperature the life-left figures assume, °C")
 
 
 class SimulateRequest(_Model):
@@ -315,6 +335,33 @@ def whatif(req: WhatIfRequest) -> WhatIfResponse:
                           diff=diff_plans(before, before_state, after, after_state))
 
 
+STOCK_BASE = ("normal", 51)  # world the seller's stock is planned in: scenario, seed
+
+
+@app.post("/stock/state", response_model=StockResponse, tags=["planning"])
+def stock_state(req: StockRequest) -> StockResponse:
+    """Turn a seller's own batch list into a State that ``/plan`` and ``/whatif`` accept."""
+    cfg = get_cfg()
+    day = req.plan_date or datetime.now(IST).date()
+    scenario_id, seed = STOCK_BASE
+    try:
+        inst = get_instance(scenario_id, seed, day, days=1)
+        base = initial_state(inst, cfg, req.forecast_mode, req.risk_p)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(422, f"can't build a market forecast for {day}: {exc}") from exc
+    try:
+        state, rows = build_state(base, req.batches, cfg)
+    except StockError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return StockResponse(plan_date=day, state=state, rows=rows,
+                         excluded_kg=round(sum(r.qty_kg for r in rows if not r.planned), 1),
+                         base=f"{scenario_id} scenario world, seed {seed}",
+                         base_scenario_id=scenario_id, base_seed=seed,
+                         hub_temp_c=cfg.default.cost.hub_storage_temp_c)
+
+
 @app.post("/simulate", response_model=SimulateResponse, tags=["evaluation"])
 def simulate(req: SimulateRequest) -> SimulateResponse:
     cfg = get_cfg()
@@ -410,8 +457,13 @@ def pulse(
     seed: Annotated[int, Query(ge=0)] = 51,
     date_: Annotated[date | None, Query(alias="date", description="None = scenario start")] = None,
     dest_id: str | None = None,
+    own_day: Annotated[bool, Query(description="build the world starting on `date` "
+                                               "(any date, as for /stock/state)")] = False,
 ) -> PulseResponse:
-    inst = get_instance(scenario_id, seed)
+    if own_day and date_ is not None:
+        inst = get_instance(scenario_id, seed, date_, days=1)
+    else:
+        inst = get_instance(scenario_id, seed)
     day = 0 if date_ is None else (date_ - inst.start_date).days
     if not 0 <= day < inst.days:
         raise HTTPException(422, f"date must be within {inst.start_date} … "

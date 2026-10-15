@@ -95,3 +95,20 @@ export interface EvalReport {
 export interface Review { id: string; name: string; role: string; rating: number; text: string; created_at: string }
 
 export type { Plan, State };
+
+// /stock/state — a seller's own batches turned into a plannable State.
+export type Grade = "A" | "B" | "C";
+export interface StockBatchIn {
+  commodity_id: string; qty_kg: number; grade?: Grade; harvest_date?: string | null;
+  cost_per_kg?: number | null; label?: string | null;
+}
+export type StockStatus = "fresh" | "sell_today" | "spoiled";
+export interface StockRow {
+  batch_id: string; commodity_id: string; qty_kg: number; grade: Grade; age_days: number;
+  remaining_life_mean_days: number; quality: number; days_left_at_hub: number;
+  cost_per_kg: number; cost_assumed: boolean; status: StockStatus; planned: boolean;
+}
+export interface StockResponse {
+  plan_date: string; state: State; rows: StockRow[]; excluded_kg: number;
+  base: string; base_scenario_id: string; base_seed: number; hub_temp_c: number;
+}

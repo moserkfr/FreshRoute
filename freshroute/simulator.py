@@ -122,7 +122,7 @@ class Simulator:
         market_events = [e for e in known if not e["announced"]]  # announced already in *_full
         return State(
             date=self.inst.date_of(day),
-            ambient_temp_c=self.inst.ambient_forecast_c[day],
+            ambient_temp_c=self.inst.ambient_forecast_c[min(day, self.inst.days - 1)],
             batches=batches,
             vehicles=[v.model_copy(update={"available": v.vehicle_id not in down})
                       for v in self.inst.vehicles],
@@ -143,14 +143,21 @@ class Simulator:
         outcomes: list[DayOutcome] = []
         for day in range(self.inst.days):
             outcomes.append(self._day(day))
+        # Wind-down: no new stock arrives, planners keep dispatching what they hold, so every
+        # planner's leftover stock ends sold or spoiled instead of being cut off by the run end.
+        wind = self.cfg.default.simulation.wind_down_days
+        if wind > self.cfg.default.simulation.settle_extra_days:
+            raise ValueError("wind_down_days must not exceed settle_extra_days (market data)")
+        for w in range(wind):
+            outcomes.append(self._day(self.inst.days + w, wind_down=True))
         # Settle loads still on the road after the last planning day.
-        last = self.inst.date_of(self.inst.days - 1)
+        last = self.inst.date_of(self.inst.days - 1 + wind)
         k = 0
         while self.transit:
             k += 1
             d = last + timedelta(days=k)
-            out = DayOutcome(day=self.inst.days - 1 + k, date=d, settlement_only=True)
-            self._settle(out, self.inst.days - 1 + k, d, count_demand=False)
+            out = DayOutcome(day=self.inst.days - 1 + wind + k, date=d, settlement_only=True)
+            self._settle(out, self.inst.days - 1 + wind + k, d, count_demand=False)
             self._close_ledger(out)
             outcomes.append(out)
             if k > 10:
@@ -161,9 +168,9 @@ class Simulator:
                          days=outcomes, placeholder_data=self.inst.placeholder_data,
                          events=self.inst.events)
 
-    def _day(self, day: int) -> DayOutcome:
+    def _day(self, day: int, wind_down: bool = False) -> DayOutcome:
         today = self.inst.date_of(day)
-        out = DayOutcome(day=day, date=today)
+        out = DayOutcome(day=day, date=today, settlement_only=wind_down)
         if day > 0:
             self._age_inventory(out)
         self._receive(day, out)
@@ -180,7 +187,7 @@ class Simulator:
                 out.replanned = True
 
         self._execute(day, plan, out)
-        self._settle(out, day, today, count_demand=True)
+        self._settle(out, day, today, count_demand=not wind_down)
         self._close_ledger(out)
         return out
 
@@ -256,7 +263,7 @@ class Simulator:
         down = {e["params"]["vehicle_id"] for e in in_force if e["type"] == "vehicle_down"}
         sim = self.cfg.default.simulation
         chill = self.cfg.default.shelf_life.chill_penalty
-        amb = self.inst.ambient_true_c[day]
+        amb = self.inst.ambient_true_c[min(day, self.inst.days - 1)]
         dep = depart_ts(self.inst.date_of(day), self.cfg)
         by_vehicle: dict[str, list] = defaultdict(list)
         for a in plan.allocations:

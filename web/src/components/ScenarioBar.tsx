@@ -1,13 +1,37 @@
 import { useApp } from "../state/AppState";
-import { day, titleCase } from "../utils/format";
+import { day, kg, titleCase } from "../utils/format";
 import { PillButton } from "./ui";
 
 /** Scenario + seed picker with the load / plan actions — shared by the planning pages. */
 export default function ScenarioBar({ action = "plan" }: { action?: "plan" | "load" }) {
-  const { settings, updateSettings, scenarios, instance, state, busy, loadInstance, generatePlan } = useApp();
+  const { settings, updateSettings, scenarios, instance, state, busy, loadInstance, generatePlan, source, stock } = useApp();
   const val = scenarios?.seeds.validation;
   const hiddenMin = scenarios?.seeds.hidden_min ?? 1000;
   const current = scenarios?.scenarios.find((s) => s.id === settings.scenarioId);
+
+  if (source === "stock" && stock) {
+    const planned = stock.rows.filter((r) => r.planned);
+    return (
+      <div className="card scenario-bar">
+        <div className="row" style={{ alignItems: "center" }}>
+          <span className="badge good">Your stock</span>
+          <span className="num" style={{ fontSize: 14 }}>
+            {day(stock.plan_date)} · {planned.length} batch{planned.length === 1 ? "" : "es"} · {kg(planned.reduce((n, r) => n + r.qty_kg, 0))}
+          </span>
+          <div className="spacer" />
+          <PillButton tone="ghost" to="/stock">Edit stock</PillButton>
+          <PillButton tone="ghost" onClick={loadInstance} busy={busy === "instance"}>Back to scenarios</PillButton>
+          {action === "plan" && (
+            <PillButton tone="amber" onClick={generatePlan} busy={busy !== null}>{busy === "plan" ? "Planning…" : "Replan"}</PillButton>
+          )}
+        </div>
+        <p className="muted" style={{ margin: "10px 0 0", fontSize: 13 }}>
+          Trucks, markets and price forecasts come from the {stock.base}.
+          {stock.excluded_kg > 0 && <> {kg(stock.excluded_kg)} already past saleable is left out.</>}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="card scenario-bar">

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from statistics import NormalDist
 
 from freshroute.config import AppConfig
 from freshroute.logistics import estimate_trip, planning_travel_h
@@ -46,6 +47,7 @@ class Option:
     price: float                   # forecast ₹/kg at full quality on the arrival date
     revenue_per_kg: float          # price · m(q_mean) − destination and commodity handling
     handling_per_kg: float
+    p_reject: float = 0.0          # P(arrival quality below what the buyer accepts or can sell)
 
 
 @dataclass
@@ -77,6 +79,14 @@ def quality_p10(b: Batch, c: Commodity, delta: float) -> float:
     """Arrival quality exceeded with 90% probability (validator definition: unclipped)."""
     return (b.remaining_life_mean_days - z_value(0.9) * b.remaining_life_sd_days - delta) \
         / c.shelf_life_ref_days
+
+
+def reject_probability(b: Batch, c: Commodity, d: Destination, delta: float) -> float:
+    """P(arrival quality < max(buyer minimum, sellable minimum)) under the life distribution."""
+    need = max(d.min_quality_accepted, c.min_sellable_quality) * c.shelf_life_ref_days + delta
+    if b.remaining_life_sd_days <= 0:
+        return 1.0 if b.remaining_life_mean_days < need else 0.0
+    return NormalDist(b.remaining_life_mean_days, b.remaining_life_sd_days).cdf(need)
 
 
 def build(state: State, cfg: AppConfig, window_risk: bool = False) -> FeasibleSet:
@@ -135,5 +145,6 @@ def build(state: State, cfg: AppConfig, window_risk: bool = False) -> FeasibleSe
                     eta_hour=trip.eta.hour + trip.eta.minute / 60,
                     delta_life_days=trip.delta_life_days, q_mean=q_mean, q_p10=q10,
                     price=price, revenue_per_kg=price * price_multiplier(q_mean, bands) - handling,
-                    handling_per_kg=handling))
+                    handling_per_kg=handling,
+                    p_reject=reject_probability(b, c, d, trip.delta_life_days)))
     return FeasibleSet(options=options, n_candidates=n, rejected=rejected)

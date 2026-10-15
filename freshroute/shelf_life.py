@@ -14,7 +14,7 @@ from __future__ import annotations
 from statistics import NormalDist
 from typing import Protocol
 
-from freshroute.config import PriceBandsCfg
+from freshroute.config import AppConfig, PriceBandsCfg
 
 
 class ThermalParams(Protocol):
@@ -104,3 +104,16 @@ def sellable_with_prob(
     ``p`` is the operator's "risk appetite" (UI slider, default 0.9).
     """
     return life_quantile(mean_days, sd_days, p) >= delta_total_days + l_min_days
+
+
+def batch_life(c: ThermalParams, grade: str, age_days: float, hub_temp_c: float,
+               cfg: AppConfig) -> tuple[float, float]:
+    """(mean, sd) reference-days of life a batch has left ``age_days`` after harvest at the hub.
+
+    The grade sets the share of reference life it starts with; every day at hub temperature
+    uses ``consumption_rate`` reference-days. Shared by the generator and seller stock entry.
+    """
+    g = cfg.default.generator
+    rate = consumption_rate(hub_temp_c, c, cfg.default.shelf_life.chill_penalty)
+    mean = c.shelf_life_ref_days * g.grade_life_mult[grade] - age_days * rate
+    return mean, g.grade_sd_frac[grade] * max(mean, 0.0)

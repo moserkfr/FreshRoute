@@ -27,3 +27,16 @@ def test_window_risk_moves_knife_edge_lane_to_next_day(cfg):
     # Lanes with plenty of slack before closing keep their same-day sale.
     for dest in ("blr_kr", "blr_dc"):
         assert {o.arrival_date for o in risky.options if o.dest_id == dest} == {state.date}
+
+
+def test_reject_probability_rises_as_quality_margin_shrinks(cfg):
+    state = initial_state(generate("normal", 51, cfg=cfg), cfg)
+    comms = {c.id: c for c in state.commodities}
+    dest = next(d for d in state.destinations if d.dest_id == "blr_dc")  # strictest buyer
+    b = state.batches[0]
+    c = comms[b.commodity_id]
+    probs = [feasibility.reject_probability(b, c, dest, delta) for delta in (0.0, 1.0, 2.0, 4.0)]
+    assert probs == sorted(probs) and 0.0 <= probs[0] <= probs[-1] <= 1.0
+    # every surviving option carries its probability, and it stays below the p10 rule's 10%
+    opts = feasibility.build(state, cfg, window_risk=True).options
+    assert opts and all(0.0 <= o.p_reject <= 0.1 + 1e-9 for o in opts)

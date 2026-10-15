@@ -30,6 +30,7 @@ React 18 + TypeScript + Vite, react-router, react-leaflet, no CSS framework.
 |---|---|---|
 | `/` | `pages/Landing.tsx` + `landing/*` (Hero globe, StatTiles, HowItWorks, Reviews, BottomSheet) | `/eval/latest`, `GET/POST /reviews` |
 | `/plan` | `pages/TodayPlan.tsx` | `/instance`, `/plan` ×2 (`freshroute` + `fifo_nearest` for the B1 comparison) |
+| `/stock` | `pages/MyStock.tsx` | `/stock/state` (live check as the list changes), then `/plan` ×2; list saved in localStorage `fr.stock`, unit sizes in `fr.unitSizes`. Quantities in kg / crate / bag / box / bundle / quintal / tonne (`utils/units.ts`); "Paste from WhatsApp" parses chat text offline (`utils/stockText.ts`) into rows the seller confirms |
 | `/map` | `pages/MapPage.tsx` | uses the loaded state + plan |
 | `/market` | `pages/MarketPulse.tsx` | `/market/pulse` |
 | `/whatif` | `pages/WhatIf.tsx` | `/whatif` |
@@ -38,6 +39,8 @@ React 18 + TypeScript + Vite, react-router, react-leaflet, no CSS framework.
 | `/sources` | `pages/Sources.tsx` | none (reads generated `sources.json`) |
 
 Shared state lives in `src/state/AppState.tsx`; every request goes through `src/api/client.ts`.
+`AppState.source` is `scenario` or `stock`; in stock mode the scenario bar shows "Your stock" and
+Market pulse asks for the stock's base world on the stock's date (`own_day=true`).
 Defaults: scenario `festival_peak`, seed `51`, `risk_p` 0.9, forecast mode `full`.
 
 ## Contract the frontend relies on

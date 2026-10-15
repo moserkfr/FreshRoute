@@ -98,7 +98,11 @@ function DestCard({ d }: { d: DestPulse }) {
 }
 
 export default function MarketPulse() {
-  const { settings, state } = useApp();
+  const { settings, state, source, stock } = useApp();
+  // Own stock is planned in a base scenario world that starts on the stock's date.
+  const own = source === "stock" && stock != null;
+  const scenarioId = own ? stock.base_scenario_id : settings.scenarioId;
+  const seed = own ? stock.base_seed : settings.seed;
   const [data, setData] = useState<PulseResponse | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -107,12 +111,12 @@ export default function MarketPulse() {
     let live = true;
     setLoading(true);
     setErr(null);
-    api.pulse({ scenario_id: settings.scenarioId, seed: settings.seed, date: state?.date })
+    api.pulse({ scenario_id: scenarioId, seed, date: state?.date, own_day: own })
       .then((r) => live && setData(r))
       .catch((e) => live && setErr((e as Error).message))
       .finally(() => live && setLoading(false));
     return () => { live = false; };
-  }, [settings.scenarioId, settings.seed, state?.date]);
+  }, [scenarioId, seed, own, state?.date]);
 
   const withFestival = data?.destinations.filter((d) => d.festival_radar.some((r) => r.days_until <= RADAR_DAYS)).length ?? 0;
 

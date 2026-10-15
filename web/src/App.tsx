@@ -10,6 +10,7 @@ import NotFound from "./pages/NotFound";
 import Settings from "./pages/Settings";
 import Sources from "./pages/Sources";
 import TodayPlan from "./pages/TodayPlan";
+import MyStock from "./pages/MyStock";
 import WhatIf from "./pages/WhatIf";
 
 export default function App() {
@@ -25,6 +26,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/plan" element={<TodayPlan />} />
+          <Route path="/stock" element={<MyStock />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/market" element={<MarketPulse />} />
           <Route path="/whatif" element={<WhatIf />} />

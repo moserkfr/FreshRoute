@@ -1,7 +1,7 @@
 import type { Plan, State } from "../types/freshroute";
 import type {
   EvalReport, ForecastMode, Health, InstanceResponse, PlannerName, PlanResponse, PulseResponse,
-  Review, ScenariosResponse, WhatIfEvent, WhatIfResponse,
+  Review, ScenariosResponse, StockBatchIn, StockResponse, WhatIfEvent, WhatIfResponse,
 } from "./types";
 
 export const API_BASE: string = import.meta.env.VITE_API_BASE ?? "http://localhost:8000";
@@ -45,10 +45,13 @@ export const api = {
     request<PlanResponse>("/plan", { method: "POST", json: body }),
   whatif: (body: { state: State; event: WhatIfEvent; previous_plan?: Plan | null; planner?: PlannerName; risk_p?: number | null }) =>
     request<WhatIfResponse>("/whatif", { method: "POST", json: body }),
+  stockState: (body: { batches: StockBatchIn[]; plan_date?: string | null; forecast_mode?: ForecastMode; risk_p?: number | null }) =>
+    request<StockResponse>("/stock/state", { method: "POST", json: body }),
   evalLatest: () => request<EvalReport>("/eval/latest"),
-  pulse: (q: { scenario_id: string; seed: number; date?: string; dest_id?: string }) => {
+  pulse: (q: { scenario_id: string; seed: number; date?: string; dest_id?: string; own_day?: boolean }) => {
     const p = new URLSearchParams({ scenario_id: q.scenario_id, seed: String(q.seed) });
     if (q.date) p.set("date", q.date);
+    if (q.own_day) p.set("own_day", "true");
     if (q.dest_id) p.set("dest_id", q.dest_id);
     return request<PulseResponse>(`/market/pulse?${p}`);
   },

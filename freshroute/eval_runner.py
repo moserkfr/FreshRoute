@@ -115,8 +115,10 @@ def aggregate(rows: list[dict], cfg: AppConfig) -> dict:
         for p in sorted({r["planner"] for r in sc_rows}):
             pr = sorted((r for r in sc_rows if r["planner"] == p), key=lambda r: r["seed"])
             entry = {k: summarise([r[k] for r in pr], n, level) for k in HEADLINE}
-            for k in ("fulfilment_min_dest", "spoilage_pct_worst", "held_end_kg"):
-                entry[k] = summarise([r[k] for r in pr], n, level)
+            for k in ("fulfilment_min_dest", "spoilage_pct_worst", "held_end_kg",
+                      "fulfilment_of_possible_pct"):
+                if all(k in r for r in pr):
+                    entry[k] = summarise([r[k] for r in pr], n, level)
             for k in ("festival_fill_rate", "post_festival_spoilage"):
                 vals = [r[k] for r in pr if r.get(k) is not None]
                 if vals:
@@ -216,11 +218,14 @@ def _md_main(report: dict, lines: list[str]) -> None:
     meta = report["meta"]
     for sc, planners in report.get("aggregate", {}).items():
         lines += [f"## {sc}", "",
-                  "| planner | spoilage | fulfilment | net revenue | violations "
+                  "| planner | spoilage | fulfilment | of possible | net revenue | violations "
                   "| spoilage incl. end stock | end stock (t) |",
-                  "|---|---|---|---|---|---|---|"]
+                  "|---|---|---|---|---|---|---|---|"]
         for p, e in planners.items():
-            lines.append(f"| {p} | " + " | ".join(_fmt(k, e[k]) for k in HEADLINE)
+            possible = e.get("fulfilment_of_possible_pct")
+            cells = [_fmt(k, e[k]) for k in HEADLINE]
+            cells.insert(2, _fmt("fulfilment_of_possible_pct", possible) if possible else "—")
+            lines.append(f"| {p} | " + " | ".join(cells)
                          + f" | {_fmt('spoilage_pct_worst', e['spoilage_pct_worst'])}"
                          + f" | {e['held_end_kg']['mean'] / 1000:.1f} |")
         diffs = [(p, e) for p, e in planners.items() if "vs_baseline" in e]

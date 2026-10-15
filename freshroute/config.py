@@ -60,6 +60,8 @@ class SimulationCfg(_Strict):
     replan: bool = False
     drop_violations: Literal["all", "hard"] = "all"
     settle_extra_days: int = Field(default=3, ge=0)
+    # after the last delivery day, keep planning (no new stock) so held stock is sold or spoils
+    wind_down_days: int = Field(default=0, ge=0)
     sources: Sources = {}
 
 
@@ -170,6 +172,7 @@ class PlannerCfg(_Strict):
     safety_margin_days: float = Field(ge=0)       # slack inside the validator's life rules
     window_risk: bool                             # sale day from the risk_p travel time
     demand_breakpoints: list[float] = Field(min_length=2)  # × forecast demand: sell-prob segments
+    expected_rejection: bool = False  # price in P(buyer rejects on quality) per option
     min_alloc_kg: float = Field(gt=0)             # smaller MILP shares are dropped
     clearance_quality: float = Field(ge=0, le=1)  # held stock below this tomorrow → clear
     clearance_discount_pct: float = Field(ge=0, lt=100)

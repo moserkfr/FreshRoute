@@ -41,7 +41,9 @@ mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify(result, null, 1));
 console.log(`sources: ${result.reduce((n, f) => n + f.rows.length, 0)} entries from ${files.length} files`);
 
-// The network (hub + destinations) for pages that draw it without a loaded State.
+// The network (hub + destinations) and commodity list for pages that need them without a loaded State.
 const net = parse(readFileSync(join(configDir, "network.yaml"), "utf8"));
 const pick = (o) => ({ id: o.id ?? o.dest_id, name: o.name, lat: o.lat, lon: o.lon, type: o.type ?? "hub", region: o.region ?? null });
-writeFileSync(join(dirname(out), "network.json"), JSON.stringify({ hub: pick(net.hub), destinations: net.destinations.map(pick) }, null, 1));
+const comms = parse(readFileSync(join(configDir, "commodities.yaml"), "utf8")).commodities
+  .map((c) => ({ id: c.id, name: c.name, shelf_life_ref_days: c.shelf_life_ref_days, t_ref_c: c.t_ref_c }));
+writeFileSync(join(dirname(out), "network.json"), JSON.stringify({ hub: pick(net.hub), destinations: net.destinations.map(pick), commodities: comms }, null, 1));

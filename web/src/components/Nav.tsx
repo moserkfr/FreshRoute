@@ -4,6 +4,7 @@ import "./nav.css";
 
 const LINKS = [
   { to: "/plan", label: "Today's plan" },
+  { to: "/stock", label: "My stock" },
   { to: "/map", label: "Map" },
   { to: "/market", label: "Market pulse" },
   { to: "/whatif", label: "What-if" },

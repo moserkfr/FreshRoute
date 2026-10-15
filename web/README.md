@@ -49,6 +49,7 @@ runs `npm run dev`.
 | POST | `/plan` | `{state, planner?, risk_p?}` → `{plan, summary}` |
 | POST | `/whatif` | `{state, event: {type, params}, previous_plan?, planner?}` → `{state, plan, previous_plan, diff}` |
 | POST | `/simulate` | `{scenario_id, seed, planners[], days?, replan?}` → per-planner metrics + daily results |
+| POST | `/stock/state` | `{batches: [{commodity_id, qty_kg, grade?, harvest_date?, cost_per_kg?, label?}], plan_date?}` → a plannable `state` for the seller's own stock + per-batch life left and status |
 | GET | `/eval/latest` | latest evaluation report (aggregates, replan, sensitivity) |
 | GET | `/market/pulse` | `?scenario_id&seed&date&dest_id` → per destination: price vs norm, momentum, festival radar, regime |
 

@@ -55,8 +55,9 @@ def test_replan_hook_calls_planner_again_on_event_day(cfg):
     static, dynamic = _Counting(), _Counting()
     rs = run(inst, static, cfg, replan=False)
     rd = run(inst, dynamic, cfg, replan=True)
-    assert static.calls == inst.days
-    assert dynamic.calls == inst.days + 1          # one extra plan on the event day
+    planning_days = inst.days + cfg.default.simulation.wind_down_days
+    assert static.calls == planning_days
+    assert dynamic.calls == planning_days + 1      # one extra plan on the event day
     ev_day = inst.events[0]["day"]
     assert rd.days[ev_day].replanned and not rs.days[ev_day].replanned
 
@@ -90,3 +91,20 @@ def test_metrics_match_ledger(cfg):
         - m["disposal_inr"])
     assert m["fulfilment_min_dest"] <= m["fulfilment_pct"] + 1e-9 or \
         m["fulfilment_min_dest"] <= max(m["fulfilment_by_dest"].values())
+
+
+def test_wind_down_sells_off_held_stock(cfg):
+    inst = generate("normal", 1, cfg=cfg, days=5)
+    base = run(inst, get_planner("fefo_greedy"), cfg)
+    wcfg = cfg.model_copy(deep=True)
+    wcfg.default.simulation.wind_down_days = 3
+    wound = run(inst, get_planner("fefo_greedy"), wcfg)
+    tail = [d for d in wound.days if d.settlement_only]
+    assert len(tail) >= 3 and all(d.received_kg == 0 and d.demand_kg == 0 for d in tail[:3])
+    assert wound.days[-1].held_end_kg <= base.days[-1].held_end_kg
+    m = run_metrics(wound)
+    # every kg received ends sold or lost once the hub is wound down
+    accounted = m["sold_kg"] + m["spoiled_kg"] + m["held_end_kg"]
+    assert accounted == pytest.approx(m["received_kg"], rel=1e-6)
+    # demand is only counted on delivery days, so wind-down sales do not inflate fulfilment
+    assert run_metrics(base)["demand_kg"] == pytest.approx(m["demand_kg"])

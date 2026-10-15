@@ -291,7 +291,10 @@ def _solve_model(state: State, cfg: AppConfig, opts: list[Option],
         solver.Add(sum(var * batches[bid].qty_kg for bid, var in items)
                    <= room.get((cid, did), 0.0))
     for i, o in enumerate(opts):
-        obj.SetCoefficient(x[i], batches[o.batch_id].qty_kg * o.revenue_per_kg)
+        per_kg = o.revenue_per_kg
+        if pc.expected_rejection:  # kg the buyer turns away earn nothing and cost disposal
+            per_kg = (1 - o.p_reject) * o.revenue_per_kg - o.p_reject * disposal
+        obj.SetCoefficient(x[i], batches[o.batch_id].qty_kg * per_kg)
 
     # 2–3. capacity on chosen destination; one destination per vehicle
     for (vid, did), idx in by_vd.items():

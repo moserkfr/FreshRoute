@@ -10,11 +10,12 @@ const METRICS: { key: CoreMetric; label: string; fmt: (v: number) => string; bet
   { key: "net_revenue_inr", label: "Net revenue", fmt: (v) => inr(v, true), better: "higher" },
   { key: "spoilage_pct", label: "Spoilage", fmt: (v) => pct(v), better: "lower" },
   { key: "fulfilment_pct", label: "Fulfilment", fmt: (v) => pct(v), better: "higher" },
+  { key: "fulfilment_of_possible_pct", label: "Of possible demand", fmt: (v) => pct(v), better: "higher" },
   { key: "violations_total", label: "Violations", fmt: (v) => v.toFixed(0), better: "lower" },
 ];
 
 function domainFor(r: EvalReport, metric: CoreMetric, planners: string[]): [number, number] {
-  const vals = Object.values(r.aggregate).flatMap((sc) => planners.flatMap((p) => sc[p] ? [sc[p][metric].ci_lo, sc[p][metric].ci_hi] : []));
+  const vals = Object.values(r.aggregate).flatMap((sc) => planners.flatMap((p) => sc[p]?.[metric] ? [sc[p][metric]!.ci_lo, sc[p][metric]!.ci_hi] : []));
   return [Math.min(0, ...vals), Math.max(0, ...vals) * 1.02];
 }
 
@@ -29,6 +30,9 @@ export default function Evaluation() {
 
   const planners = useMemo(() => PLANNER_ORDER.filter((p) => report?.meta.planners.includes(p)), [report]);
   const shown = planners.filter((p) => !hidden.has(p));
+  const first = report ? Object.values(Object.values(report.aggregate)[0] ?? {})[0] : undefined;
+  const metrics = METRICS.filter((x) => !first || first[x.key] != null);
+  const newProtocol = first?.fulfilment_of_possible_pct != null;
   const m = METRICS.find((x) => x.key === metric)!;
 
   if (!report) return <div className="page wrap"><Loading label="Loading the evaluation report…" /></div>;
@@ -48,6 +52,7 @@ export default function Evaluation() {
             {report.meta.n_seeds} seeds ({report.meta.seed_label}) × {scenarios.length} scenarios, compared against{" "}
             {PLANNER_LABEL[baseline] ?? baseline}. Whiskers are {Math.round(report.meta.ci_level * 100)}% bootstrap CIs
             ({report.meta.bootstrap_resamples.toLocaleString("en-IN")} resamples).
+            {newProtocol && <> Each run is 14 delivery days, then a 3-day sell-down for every planner, so leftover stock ends sold or spoiled. Destination demand is 3× the hub&apos;s supply, so &ldquo;of possible demand&rdquo; shows how much of what the stock could fill was filled.</>}
           </p>
           <div className="row" style={{ gap: 6, marginTop: 14 }}>
             {isSample
@@ -65,7 +70,7 @@ export default function Evaluation() {
         <section>
           <div className="eval-filters">
             <div className="seg" role="tablist" aria-label="Metric">
-              {METRICS.map((x) => (
+              {metrics.map((x) => (
                 <button key={x.key} role="tab" aria-selected={metric === x.key} className={metric === x.key ? "on" : ""} onClick={() => setMetric(x.key)}>{x.label}</button>
               ))}
             </div>
@@ -82,7 +87,7 @@ export default function Evaluation() {
           <div className="ci-grid">
             {scenarios.map((s) => (
               <CiBars key={s} title={titleCase(s)} fmt={m.fmt} domain={domain}
-                rows={shown.filter((p) => report.aggregate[s]?.[p]).map((p) => ({ planner: p, stat: report.aggregate[s][p][metric] }))} />
+                rows={shown.filter((p) => report.aggregate[s]?.[p]?.[metric]).map((p) => ({ planner: p, stat: report.aggregate[s][p][metric]! }))} />
             ))}
           </div>
         </section>

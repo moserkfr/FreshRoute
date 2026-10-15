@@ -60,10 +60,10 @@ export interface PulseResponse {
 
 // /eval/latest
 export interface Stat { mean: number; ci_lo: number; ci_hi: number; sd: number; n: number }
-export type CoreMetric = "spoilage_pct" | "fulfilment_pct" | "net_revenue_inr" | "violations_total";
+export type CoreMetric = "spoilage_pct" | "fulfilment_pct" | "net_revenue_inr" | "violations_total" | "fulfilment_of_possible_pct";
 export interface PlannerAggregate {
   spoilage_pct: Stat; fulfilment_pct: Stat; net_revenue_inr: Stat; violations_total: Stat;
-  fulfilment_min_dest?: Stat; spoilage_pct_worst?: Stat; held_end_kg?: Stat;
+  fulfilment_min_dest?: Stat; spoilage_pct_worst?: Stat; held_end_kg?: Stat; fulfilment_of_possible_pct?: Stat;
   festival_fill_rate?: Stat; post_festival_spoilage?: Stat;
   violations_by_type?: Record<string, number>; plan_time_max_s?: number;
   vs_baseline?: Record<CoreMetric, Stat>;

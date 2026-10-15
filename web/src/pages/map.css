@@ -10,6 +10,8 @@
   background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 999px;
   padding: 2px 8px 2px 6px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: var(--shadow);
 }
+.veh-icon.edge { transform: none; }
+.veh-place { font-weight: 500; opacity: .75; margin-right: 2px; }
 .veh-icon.reefer { background: var(--peri); color: var(--on-light); border-color: transparent; }
 .q-legend { display: grid; gap: 6px; font-size: 13px; }
 .q-legend span { display: flex; align-items: center; gap: 8px; }

@@ -1,0 +1,24 @@
+.pulse-meta { margin: 18px 0 12px; gap: 6px; }
+.pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 12px; }
+.pulse-card { display: grid; gap: 14px; padding: 0 0 6px; overflow: hidden; }
+.pulse-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 18px 18px 0; }
+.regime { padding: 4px 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-radius: 999px; }
+
+.radar { margin: 0 18px; padding: 12px; border-radius: 10px; background: var(--surface-2); display: grid; gap: 8px; }
+.radar.on { background: color-mix(in srgb, var(--pink) 30%, var(--surface)); }
+.radar-item { display: grid; grid-template-columns: 64px 1fr; gap: 2px 10px; font-size: 13.5px; }
+.radar-days { grid-row: span 2; align-self: start; background: var(--pink); color: var(--on-light); border-radius: 999px; padding: 2px 8px; font-size: 12px; text-align: center; font-weight: 600; }
+.radar-up { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 12.5px; color: var(--ink-2); }
+
+.pulse-table td, .pulse-table th { padding: 8px 7px; }
+.pulse-table td:first-child, .pulse-table th:first-child { padding-left: 18px; }
+.pulse-table td:first-child { text-transform: capitalize; }
+.zbar { position: relative; width: 48px; height: 8px; background: var(--surface-2); border-radius: 4px; display: inline-block; flex: none; }
+.zbar-mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--muted); }
+.zbar-fill { position: absolute; top: 0; bottom: 0; border-radius: 4px; }
+.zbar-fill.pos { background: var(--amber); }
+.zbar-fill.neg { background: var(--s-fefo_greedy); }
+.mom { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mom.up { color: var(--warn); }
+.mom.down { color: var(--s-fefo_greedy); }
+.mom.flat { color: var(--muted); }

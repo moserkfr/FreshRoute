@@ -1,5 +1,29 @@
 # FreshRoute web UI — frontend brief
 
+## Frontend layout (built)
+
+React 18 + TypeScript + Vite, react-router, react-leaflet. No CSS framework: design tokens
+(light + dark) live in `src/styles/tokens.css`, shared components in `src/styles/base.css`.
+
+```
+npm install          # once (python tasks.py setup also does it)
+npm run dev          # http://localhost:5173 — regenerates src/data/*.json from config/ first
+npm run build        # typecheck + production bundle in dist/
+npm run types        # regenerate src/types/freshroute.ts from the JSON Schema
+```
+
+| path | what |
+|---|---|
+| `src/pages/*.tsx` | one file (+ its `.css`) per page: Landing, TodayPlan, MapPage, MarketPulse, WhatIf, Evaluation, Settings, Sources |
+| `src/landing/` | landing sections: Hero, StatTiles, HowItWorks, Reviews, BottomSheet |
+| `src/state/AppState.tsx` | settings (scenario, seed, risk_p, forecast mode; saved in localStorage), loaded State, our plan + B1 plan |
+| `src/api/` | typed client for every endpoint (`VITE_API_BASE` overrides `http://localhost:8000`) |
+| `scripts/gen-sources.mjs` | `config/*.yaml` → `src/data/sources.json` (Assumptions & sources page) and `network.json` |
+
+- Reviews on the landing page are real submissions only: `GET/POST /reviews`, stored in `var/reviews.jsonl`.
+- "How it works" plays `public/media/how-it-works.mp4` when present (git-ignored), else an animated walkthrough.
+- Evaluation uses `/eval/latest` and falls back to `sample/eval_latest.json` (badged as a sample).
+
 The backend is done; this folder is where the frontend lives (Vite dev server on
 `localhost:5173`, already allowed by the API's CORS config).
 

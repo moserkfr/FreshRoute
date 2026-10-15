@@ -1,0 +1,20 @@
+.map-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 12px; margin-top: 12px; align-items: start; }
+.map-frame { height: 620px; }
+.map { width: 100%; height: 100%; background: var(--surface-2); }
+/* Leaflet's panes (z 400) and controls (z 1000) would otherwise stack above the fixed nav (z 50). */
+.leaflet-container { font-family: var(--font); isolation: isolate; z-index: var(--z-base); }
+.leaflet-tooltip { font-family: var(--font); font-size: 12px; border-radius: 8px; }
+.veh-icon-wrap { background: none; border: 0; }
+.veh-icon {
+  display: inline-flex; align-items: center; gap: 4px; transform: translate(-50%, -50%);
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 999px;
+  padding: 2px 8px 2px 6px; font-size: 11px; font-weight: 600; white-space: nowrap; box-shadow: var(--shadow);
+}
+.veh-icon.reefer { background: var(--peri); color: var(--on-light); border-color: transparent; }
+.q-legend { display: grid; gap: 6px; font-size: 13px; }
+.q-legend span { display: flex; align-items: center; gap: 8px; }
+.q-legend i { width: 28px; height: 6px; border-radius: 3px; display: inline-block; }
+@media (max-width: 1000px) {
+  .map-layout { grid-template-columns: 1fr; }
+  .map-frame { height: 440px; }
+}

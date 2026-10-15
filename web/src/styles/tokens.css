@@ -1,0 +1,117 @@
+/* FreshRoute design tokens — flat colour blocks, lowercase display type, italic accents. */
+:root {
+  --font: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* stacking scale — page content (incl. third-party widgets like Leaflet) < nav < tooltips */
+  --z-base: 0;
+  --z-nav: 50;
+  --z-tooltip: 60;
+
+  /* block palette (same in both themes — text on blocks uses --on-* tokens) */
+  --yellow: #f7e07e;
+  --brown: #5b3a0b;
+  --peri: #a9c0f5;
+  --red: #ee4524;
+  --pink: #f3a5ee;
+  --plum: #2d2030;
+  --green: #0e4b2f;
+  --amber: #c46a12;
+  --on-light: #17131a;
+  --on-dark: #fbf8f2;
+
+  /* surfaces & ink */
+  --bg: #f6f5f2;
+  --surface: #ffffff;
+  --surface-2: #efede8;
+  --ink: #17131a;
+  --ink-2: #4a4450;
+  --muted: #77707c;
+  --line: #e4e0da;
+  --shadow: 0 1px 2px rgb(23 19 26 / 6%), 0 8px 24px rgb(23 19 26 / 6%);
+
+  /* status (reserved — always shipped with an icon + label) */
+  --good: #1f7a4a;
+  --good-bg: #dff2e6;
+  --warn: #9a5b00;
+  --warn-bg: #fdf0d2;
+  --bad: #c2321b;
+  --bad-bg: #fde3dc;
+
+  /* planner series — validated categorical order (light) */
+  --s-freshroute: #e8432a;
+  --s-fefo_greedy: #3d6fd9;
+  --s-chase_price: #c77a0e;
+  --s-ours_no_calendar: #b44bb0;
+  --s-fifo_nearest: #2e8b57;
+
+  /* quality ramp (sequential, one hue) for map lines */
+  --q-0: #f3c2b8;
+  --q-1: #ec8a74;
+  --q-2: #e0553b;
+  --q-3: #b8341d;
+  --q-4: #7d2312;
+
+  --radius: 14px;
+  --radius-sm: 8px;
+  --gutter: clamp(16px, 4vw, 40px);
+  --max: 1180px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151117;
+    --surface: #1e1921;
+    --surface-2: #28212c;
+    --ink: #f3eff5;
+    --ink-2: #cfc7d4;
+    --muted: #a39aa9;
+    --line: #342b38;
+    --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+    --good: #5fcf8f;
+    --good-bg: #173326;
+    --warn: #f0b44c;
+    --warn-bg: #3a2b10;
+    --bad: #ff7a61;
+    --bad-bg: #3d1c16;
+    --s-freshroute: #e8553c;
+    --s-fefo_greedy: #5b85e6;
+    --s-chase_price: #c98418;
+    --s-ours_no_calendar: #c060bc;
+    --s-fifo_nearest: #2f9a62;
+    --q-0: #5a2a22;
+    --q-1: #8f3b2b;
+    --q-2: #d0573c;
+    --q-3: #f08a6f;
+    --q-4: #ffc4b3;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #151117;
+  --surface: #1e1921;
+  --surface-2: #28212c;
+  --ink: #f3eff5;
+  --ink-2: #cfc7d4;
+  --muted: #a39aa9;
+  --line: #342b38;
+  --shadow: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 30%);
+  --good: #5fcf8f;
+  --good-bg: #173326;
+  --warn: #f0b44c;
+  --warn-bg: #3a2b10;
+  --bad: #ff7a61;
+  --bad-bg: #3d1c16;
+  --s-freshroute: #e8553c;
+  --s-fefo_greedy: #5b85e6;
+  --s-chase_price: #c98418;
+  --s-ours_no_calendar: #c060bc;
+  --s-fifo_nearest: #2f9a62;
+  --q-0: #5a2a22;
+  --q-1: #8f3b2b;
+  --q-2: #d0573c;
+  --q-3: #f08a6f;
+  --q-4: #ffc4b3;
+  color-scheme: dark;
+}

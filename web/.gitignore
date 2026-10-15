@@ -1,0 +1,5 @@
+node_modules/
+dist/
+src/data/sources.json
+public/media/*.mp4
+src/data/network.json

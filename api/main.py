@@ -9,6 +9,7 @@ Endpoints
   POST /simulate        run planners over a scenario × seed → RunResults + metrics
   GET  /eval/latest     latest evaluation report (reports/final/ first, then reports/)
   GET  /market/pulse    price vs seasonal norm, momentum, festival radar, regime flag
+  GET/POST /reviews     reviews left on the web landing page (var/reviews.jsonl)
 
 Rules carried over from the evaluation: seeds ≥ ``seeds.hidden_min`` are refused (the hidden
 set stays locked until the final run), every plan goes through the same validator as in the
@@ -360,6 +361,47 @@ def eval_latest(
     out = {k: v for k, v in report.items() if include_runs or k != "runs"}
     out["source_file"] = path.name if path.parent.name != "final" else f"final/{path.name}"
     return out
+
+
+REVIEWS_FILE = Path(__file__).resolve().parent.parent / "var" / "reviews.jsonl"
+
+
+class ReviewIn(_Model):
+    name: str = Field(min_length=1, max_length=60)
+    role: str = Field(default="", max_length=80)
+    rating: int = Field(ge=1, le=5)
+    text: str = Field(min_length=10, max_length=1000)
+
+
+class Review(ReviewIn):
+    id: str
+    created_at: str
+
+
+def _read_reviews() -> list[Review]:
+    if not REVIEWS_FILE.exists():
+        return []
+    rows = REVIEWS_FILE.read_text(encoding="utf-8").splitlines()
+    return [Review.model_validate_json(r) for r in rows if r.strip()]
+
+
+@app.get("/reviews", response_model=list[Review], tags=["site"])
+def list_reviews() -> list[Review]:
+    """Reviews left on the landing page, newest first (stored in var/reviews.jsonl)."""
+    return sorted(_read_reviews(), key=lambda r: r.created_at, reverse=True)
+
+
+@app.post("/reviews", response_model=Review, status_code=201, tags=["site"])
+def add_review(req: ReviewIn) -> Review:
+    clean = {k: v.strip() if isinstance(v, str) else v for k, v in req.model_dump().items()}
+    if not clean["name"] or len(clean["text"]) < 10:
+        raise HTTPException(422, "name and a review of at least 10 characters are required")
+    review = Review(**clean, id=f"rv_{time.time_ns():x}",
+                    created_at=time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+    REVIEWS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with REVIEWS_FILE.open("a", encoding="utf-8") as f:
+        f.write(review.model_dump_json() + "\n")
+    return review
 
 
 @app.get("/market/pulse", response_model=PulseResponse, tags=["market"])

@@ -1,0 +1,31 @@
+{
+  "name": "freshroute-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run sources && vite",
+    "build": "npm run sources && tsc --noEmit -p . && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p .",
+    "sources": "node scripts/gen-sources.mjs",
+    "types": "json2ts -i src/types/freshroute.schema.json -o src/types/freshroute.ts --unreachableDefinitions --no-additionalProperties"
+  },
+  "dependencies": {
+    "leaflet": "1.9.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-leaflet": "4.2.1",
+    "react-router-dom": "6.26.2"
+  },
+  "devDependencies": {
+    "@types/leaflet": "1.9.12",
+    "@types/react": "18.3.11",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.2",
+    "json-schema-to-typescript": "15.0.2",
+    "typescript": "5.6.2",
+    "vite": "5.4.8",
+    "yaml": "2.5.1"
+  }
+}

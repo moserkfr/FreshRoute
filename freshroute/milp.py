@@ -231,6 +231,8 @@ def _solve_model(state: State, cfg: AppConfig, opts: list[Option],
     if solver is None:
         raise RuntimeError(f"OR-Tools solver {pc.solver} unavailable")
     solver.SetTimeLimit(int(1000 * time_limit_s))
+    if pc.node_limit and not relax:  # work-based stop: same seed, same plan on any machine
+        solver.SetSolverSpecificParametersAsString(f"limits/totalnodes = {pc.node_limit}")
     batches = {b.batch_id: b for b in state.batches}
     vehicles = {v.vehicle_id: v for v in state.vehicles}
     lanes = {ln.dest_id: ln for ln in state.lanes}
@@ -294,7 +296,7 @@ def _solve_model(state: State, cfg: AppConfig, opts: list[Option],
         solver.Add(sum(x[i] * batches[opts[i].batch_id].qty_kg for i in idx)
                    <= vehicles[vid].capacity_kg * y[(vid, did)])
         obj.SetCoefficient(y[(vid, did)], -trip_cost(vehicles[vid], lanes[did].distance_km))
-    for vid in {p[0] for p in pairs}:
+    for vid in sorted({p[0] for p in pairs}):
         solver.Add(sum(y[p] for p in pairs if p[0] == vid) <= 1)
     # Symmetry breaking: identical trucks (same type, capacity, costs) are interchangeable, so
     # order them by destination index (unused last). Removes equivalent plans from the search.

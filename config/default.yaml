@@ -122,7 +122,8 @@ market:
 planner:
   risk_p: 0.9                        # chance-constraint probability ("risk appetite")
   solver: SCIP                       # OR-Tools pywraplp backend
-  time_limit_s: 10.0
+  time_limit_s: 60.0                 # wall-clock safety net only; node_limit is the real stop
+  node_limit: 1000                   # SCIP branch-and-bound nodes per solve (deterministic stop)
   mip_gap: 0.01                      # stop when within 1% of the best possible objective
   lp_fix_threshold: 0.01             # phase 2 keeps truck→destination pairs the LP uses above this
   split_batches: true                # false -> x[b,d,v] binary
@@ -141,7 +142,8 @@ planner:
   b3_discount_pct: 20
   sources:
     risk_p: "assumption: p = 0.9"
-    time_limit_s: "assumption: 10 s"
+    time_limit_s: "assumption: 60 s safety net; typical solve < 7 s"
+    node_limit: "assumption: 1000 nodes (hardest observed solve uses < 60)"
     fairness_phi: "assumption: φ = 0.6"
     festival_guard_fdi: "assumption: 10% demand uplift counts as a festival signal"
     clearance: "assumption: local clearance at 35% for stock about to cross q 0.3"
@@ -151,9 +153,20 @@ evaluation:
   bootstrap_resamples: 2000          # resamples over seeds for means and paired differences
   ci_level: 0.95
   baseline: fifo_nearest             # headline comparison is vs B1
+  # Replan vs static: the same planner with and without the mid-day replanning hook.
+  replan_scenarios: [lane_closure, reefer_breakdown, demand_spike]
+  replan_planners: [freshroute, fefo_greedy]
+  # Tornado: each parameter ×(1 ± delta), Δ(planner − baseline) on net revenue and spoilage.
+  sensitivity:
+    scenario: normal
+    seeds: [51, 70]                  # 20 validation seeds per setting
+    delta: 0.2
+    params: [q10, life_sd, delay_prob, demand_sigma, price_sigma, elasticity, freight]
+    planner: freshroute
   sources:
     bootstrap_resamples: "assumption: percentile bootstrap, 2,000 resamples"
     baseline: "B1 is the documented baseline"
+    sensitivity: "±20% on Q10, shelf-life sd, delay probability, demand σ, price σ, ε_d, freight cost"
 
 data:
   # Agmarknet daily arrivals + prices per market, republished as bulk CSV by India Data Portal

@@ -160,6 +160,7 @@ class PlannerCfg(_Strict):
     solver: Literal["SCIP", "CBC", "CP-SAT", "HIGHS"]
     time_limit_s: float = Field(gt=0)
     mip_gap: float = Field(ge=0, lt=1)
+    node_limit: int = Field(default=0, ge=0)  # 0 = no limit
     lp_fix_threshold: float = Field(ge=0, lt=1)  # truck keeps destinations with LP y above
     split_batches: bool
     fairness_enabled: bool
@@ -176,10 +177,21 @@ class PlannerCfg(_Strict):
     sources: Sources = {}
 
 
+class SensitivityCfg(_Strict):
+    scenario: str
+    seeds: tuple[int, int]               # inclusive range (validation seeds)
+    delta: float = Field(gt=0, lt=1)     # ± fraction applied to each parameter
+    params: list[str] = Field(min_length=1)
+    planner: str
+
+
 class EvaluationCfg(_Strict):
     bootstrap_resamples: int = Field(ge=100)
     ci_level: float = Field(gt=0.5, lt=1.0)
     baseline: str
+    replan_scenarios: list[str] = Field(min_length=1)
+    replan_planners: list[str] = Field(min_length=1)
+    sensitivity: SensitivityCfg
     sources: Sources = {}
 
 

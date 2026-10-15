@@ -31,14 +31,18 @@ class FreshRoutePlanner:
         self.time_limit_s = time_limit_s
         self._seen: set[str] = set()       # batch ids in yesterday's State
         self._last_date = None
+        self._arrivals: dict[str, float] = {}
 
     def _expected_arrivals(self, state: State) -> dict[str, float]:
         """Fresh kg per commodity expected each coming day ≈ what arrived today.
 
         Today's arrivals are the batches not in yesterday's State. Without a history (first
         day, or a one-off API call) every batch counts as new — the conservative choice, as
-        it leaves the least room for held stock.
+        it leaves the least room for held stock. A second call on the same day (mid-day
+        replanning) reuses the morning's estimate.
         """
+        if self._last_date == state.date:
+            return dict(self._arrivals)
         consecutive = (self._last_date is not None
                        and (state.date - self._last_date).days == 1)
         out: dict[str, float] = {}
@@ -47,7 +51,8 @@ class FreshRoutePlanner:
                 out[b.commodity_id] = out.get(b.commodity_id, 0.0) + b.qty_kg
         self._seen = {b.batch_id for b in state.batches}
         self._last_date = state.date
-        return out
+        self._arrivals = out
+        return dict(out)
 
     # ------------------------------------------------------------------ pipeline
 

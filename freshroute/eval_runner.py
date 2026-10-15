@@ -3,9 +3,14 @@
 Every planner meets the same instance per (scenario, seed) — same batches, markets, road
 delays (common random numbers) — so per-seed differences vs the baseline are paired.
 
+Modes (``--mode``, default ``all``):
+  main         every scenario × planner × seed, with CIs, paired differences vs B1, win-rates
+  replan       disruption scenarios: the same planner with vs without mid-day replanning
+  sensitivity  tornado: each parameter ×(1 ± δ) on one scenario, Δ(planner − B1) per setting
+
 Usage:
-  python -m freshroute.eval_runner                       # validation seeds, all scenarios
-  python -m freshroute.eval_runner --scenarios normal --seeds 51-60
+  python -m freshroute.eval_runner                       # all modes, validation seeds
+  python -m freshroute.eval_runner --mode main --scenarios normal --seeds 51-60
   python -m freshroute.eval_runner --hidden              # locked final run (seeds ≥ hidden_min)
 """
 
@@ -25,8 +30,9 @@ import numpy as np
 from freshroute.baselines import PLANNERS, get_planner
 from freshroute.config import AppConfig, load_config
 from freshroute.generator import generate, parse_seeds
-from freshroute.market_model import load_market_params
+from freshroute.market_model import PROCESSED_DIR, load_market_params
 from freshroute.metrics import run_metrics
+from freshroute.sensitivity import perturb
 from freshroute.simulator import run
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -71,21 +77,29 @@ def festival_dates(cfg: AppConfig, start: date, days: int) -> list[date]:
     return sorted(set(out))
 
 
-def run_one(task: tuple[str, int, list[str]]) -> list[dict]:
-    """Generate one instance and run every planner on it (worker entry point)."""
+def run_one(task: dict) -> list[dict]:
+    """Generate one instance and run the task's planners on it (worker entry point).
+
+    task: scenario, seed, planners, and optionally replan (bool) and perturb ((param, factor)).
+    """
     import warnings
     warnings.filterwarnings("ignore")  # placeholder warnings are reported once by the parent
-    scenario, seed, planners = task
     cfg = load_config()
-    inst = generate(scenario, seed, cfg=cfg)
+    mp = load_market_params()
+    pert = task.get("perturb")
+    if pert:
+        cfg, mp = perturb(cfg, mp, pert[0], pert[1])
+    inst = generate(task["scenario"], task["seed"], cfg=cfg, market_params=mp)
     fests = festival_dates(cfg, inst.start_date, inst.days)
     out = []
-    for name in planners:
+    for name in task["planners"]:
         t0 = time.perf_counter()
-        r = run(inst, get_planner(name), cfg)
+        r = run(inst, get_planner(name), cfg, replan=task.get("replan", False))
         m = run_metrics(r, fests)
-        m["wall_s"] = time.perf_counter() - t0
-        m["instance_fingerprint"] = inst.fingerprint()[:16]
+        m.update(wall_s=time.perf_counter() - t0, instance_fingerprint=inst.fingerprint()[:16],
+                 replan=bool(task.get("replan", False)), mode=task.get("mode", "main"),
+                 perturb_param=pert[0] if pert else None,
+                 perturb_factor=pert[1] if pert else 1.0)
         out.append(m)
     return out
 
@@ -103,6 +117,10 @@ def aggregate(rows: list[dict], cfg: AppConfig) -> dict:
             entry = {k: summarise([r[k] for r in pr], n, level) for k in HEADLINE}
             for k in ("fulfilment_min_dest", "spoilage_pct_worst", "held_end_kg"):
                 entry[k] = summarise([r[k] for r in pr], n, level)
+            for k in ("festival_fill_rate", "post_festival_spoilage"):
+                vals = [r[k] for r in pr if r.get(k) is not None]
+                if vals:
+                    entry[k] = summarise(vals, n, level)
             entry["violations_by_type"] = {}
             for r in pr:
                 for k, v in r["violations"].items():
@@ -123,6 +141,66 @@ def aggregate(rows: list[dict], cfg: AppConfig) -> dict:
     return out
 
 
+def aggregate_replan(rows: list[dict], cfg: AppConfig) -> dict:
+    """Replan − static per (scenario, planner), paired by seed."""
+    ev = cfg.default.evaluation
+    n, level = ev.bootstrap_resamples, ev.ci_level
+    out: dict = {}
+    for sc in sorted({r["scenario_id"] for r in rows}):
+        for p in sorted({r["planner"] for r in rows if r["scenario_id"] == sc}):
+            sub = [r for r in rows if r["scenario_id"] == sc and r["planner"] == p]
+            static = {r["seed"]: r for r in sub if not r["replan"]}
+            dyn = {r["seed"]: r for r in sub if r["replan"]}
+            seeds = sorted(static.keys() & dyn.keys())
+            if not seeds:
+                continue
+            entry = {"static": {k: summarise([static[s][k] for s in seeds], n, level)
+                                for k in HEADLINE},
+                     "replan": {k: summarise([dyn[s][k] for s in seeds], n, level)
+                                for k in HEADLINE},
+                     "replan_minus_static": {
+                         k: summarise([dyn[s][k] - static[s][k] for s in seeds], n, level)
+                         for k in HEADLINE},
+                     "win_rate_net_revenue": sum(dyn[s]["net_revenue_inr"]
+                                                 > static[s]["net_revenue_inr"] + 1e-6
+                                                 for s in seeds) / len(seeds),
+                     "ties": sum(abs(dyn[s]["net_revenue_inr"] - static[s]["net_revenue_inr"])
+                                 <= 1e-6 for s in seeds) / len(seeds)}
+            out.setdefault(sc, {})[p] = entry
+    return out
+
+
+def aggregate_sensitivity(rows: list[dict], cfg: AppConfig) -> dict:
+    """Tornado data: Δ(planner − baseline) per parameter setting, paired by seed."""
+    sc = cfg.default.evaluation.sensitivity
+    base_name = cfg.default.evaluation.baseline
+
+    def advantage(sub: list[dict]) -> dict[str, float]:
+        ours = {r["seed"]: r for r in sub if r["planner"] == sc.planner}
+        b1 = {r["seed"]: r for r in sub if r["planner"] == base_name}
+        seeds = sorted(ours.keys() & b1.keys())
+        return {"d_net_revenue_inr": float(np.mean([ours[s]["net_revenue_inr"]
+                                                    - b1[s]["net_revenue_inr"] for s in seeds])),
+                "d_spoilage_pct": float(np.mean([ours[s]["spoilage_pct"]
+                                                 - b1[s]["spoilage_pct"] for s in seeds])),
+                "n": len(seeds)}
+
+    base = advantage([r for r in rows if r["perturb_param"] is None])
+    tornado = []
+    for param in sc.params:
+        lo = advantage([r for r in rows if r["perturb_param"] == param
+                        and r["perturb_factor"] < 1])
+        hi = advantage([r for r in rows if r["perturb_param"] == param
+                        and r["perturb_factor"] > 1])
+        tornado.append({"param": param, "low_factor": 1 - sc.delta, "high_factor": 1 + sc.delta,
+                        "low": lo, "high": hi,
+                        "swing_net_revenue_inr": abs(hi["d_net_revenue_inr"]
+                                                     - lo["d_net_revenue_inr"])})
+    tornado.sort(key=lambda t: -t["swing_net_revenue_inr"])
+    return {"scenario": sc.scenario, "planner": sc.planner, "baseline": base_name,
+            "delta": sc.delta, "base": base, "tornado": tornado}
+
+
 # ------------------------------------------------------------------ reporting
 
 
@@ -134,15 +212,9 @@ def _fmt(k: str, s: dict) -> str:
     return f"{s['mean']:.2f} [{s['ci_lo']:.2f}, {s['ci_hi']:.2f}]"
 
 
-def to_markdown(report: dict) -> str:
+def _md_main(report: dict, lines: list[str]) -> None:
     meta = report["meta"]
-    lines = [f"# FreshRoute evaluation — {meta['timestamp']}", ""]
-    if meta["placeholder_data"]:
-        lines += ["> **PLACEHOLDER MARKET DATA** — numbers are not final.", ""]
-    lines += [f"Seeds: {meta['seed_label']} ({meta['n_seeds']}) · planners: "
-              f"{', '.join(meta['planners'])} · baseline: `{meta['baseline']}` · "
-              f"{int(meta['ci_level'] * 100)}% bootstrap CI over seeds", ""]
-    for sc, planners in report["aggregate"].items():
+    for sc, planners in report.get("aggregate", {}).items():
         lines += [f"## {sc}", "",
                   "| planner | spoilage | fulfilment | net revenue | violations "
                   "| spoilage incl. end stock | end stock (t) |",
@@ -163,15 +235,99 @@ def to_markdown(report: dict) -> str:
                              f"{_fmt('net_revenue_inr', d['net_revenue_inr'])} | "
                              f"{e['win_rate']['net_revenue_inr']:.0%} | "
                              f"{e['win_rate']['spoilage_pct']:.0%} |")
+        fest = [(p, e) for p, e in planners.items() if "festival_fill_rate" in e]
+        if fest:
+            lines += ["", "| planner | festival fill rate (±3 d) | post-festival spoilage (3 d) |",
+                      "|---|---|---|"]
+            for p, e in fest:
+                post = e.get("post_festival_spoilage")
+                post_txt = _fmt("post_pct", post) if post else "—"
+                lines.append(f"| {p} | {_fmt('fill_pct', e['festival_fill_rate'])} "
+                             f"| {post_txt} |")
         lines.append("")
+
+
+def _md_replan(report: dict, lines: list[str]) -> None:
+    lines += ["## Replan vs static (mid-day replanning hook)", "",
+              "| scenario | planner | static net revenue | replan net revenue | Δ net revenue "
+              "| Δ spoilage | replan better | identical |", "|---|---|---|---|---|---|---|---|"]
+    for sc, planners in report["replan"].items():
+        for p, e in planners.items():
+            d = e["replan_minus_static"]
+            cells = [sc, p, _fmt("net_revenue_inr", e["static"]["net_revenue_inr"]),
+                     _fmt("net_revenue_inr", e["replan"]["net_revenue_inr"]),
+                     _fmt("net_revenue_inr", d["net_revenue_inr"]),
+                     _fmt("spoilage_pct", d["spoilage_pct"]),
+                     f"{e['win_rate_net_revenue']:.0%}", f"{e['ties']:.0%}"]
+            lines.append("| " + " | ".join(cells) + " |")
+    lines.append("")
+
+
+def _md_sensitivity(report: dict, lines: list[str]) -> None:
+    t = report["sensitivity"]
+    b = t["base"]
+    lines += [f"## Sensitivity (tornado): `{t['planner']}` − `{t['baseline']}` on "
+              f"{t['scenario']}, each parameter ×(1 ± {t['delta']:.0%})", "",
+              f"Base advantage: ₹{b['d_net_revenue_inr']:,.0f} net revenue, "
+              f"{b['d_spoilage_pct']:+.1%} spoilage ({b['n']} seeds).", "",
+              "| parameter | Δ revenue at −δ | Δ revenue at +δ | Δ spoilage at −δ "
+              "| Δ spoilage at +δ |", "|---|---|---|---|---|"]
+    for row in t["tornado"]:
+        lo, hi = row["low"], row["high"]
+        lines.append(f"| {row['param']} | ₹{lo['d_net_revenue_inr']:,.0f} | "
+                     f"₹{hi['d_net_revenue_inr']:,.0f} | {lo['d_spoilage_pct']:+.1%} | "
+                     f"{hi['d_spoilage_pct']:+.1%} |")
+    lines.append("")
+
+
+def to_markdown(report: dict) -> str:
+    meta = report["meta"]
+    lines = [f"# FreshRoute evaluation — {meta['timestamp']}", ""]
+    if meta["placeholder_data"]:
+        lines += ["> **PLACEHOLDER MARKET DATA** — numbers are not final.", ""]
+    lines += [f"Seeds: {meta['seed_label']} ({meta['n_seeds']}) · baseline: "
+              f"`{meta['baseline']}` · {int(meta['ci_level'] * 100)}% bootstrap CI over seeds", ""]
+    w = report.get("forecast_wape")
+    if w:
+        lines += ["## Forecast accuracy (hold-out year, daily arrivals at destination markets)", "",
+                  "| forecast | WAPE overall | WAPE festival windows (±7 d) |", "|---|---|---|"]
+        for mode in ("full", "no_calendar"):
+            lines.append(f"| {mode} | {w[mode]['WAPE_overall']:.1%} | "
+                         f"{w[mode]['WAPE_festival_window']:.1%} |")
+        lines.append("")
+    _md_main(report, lines)
+    if report.get("replan"):
+        _md_replan(report, lines)
+    if report.get("sensitivity"):
+        _md_sensitivity(report, lines)
     return "\n".join(lines)
+
+
+def run_tasks(tasks: list[dict], jobs: int, label: str) -> list[dict]:
+    n_runs = sum(len(t["planners"]) for t in tasks)
+    print(f"{label}: {len(tasks)} instance(s), {n_runs} runs on {jobs} worker(s)")
+    t0 = time.perf_counter()
+    rows: list[dict] = []
+    if jobs > 1 and len(tasks) > 1:
+        with ProcessPoolExecutor(max_workers=jobs) as ex:
+            for i, res in enumerate(ex.map(run_one, tasks), 1):
+                rows.extend(res)
+                print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
+    else:
+        for i, task in enumerate(tasks, 1):
+            rows.extend(run_one(task))
+            print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
+    print(f"\n  done in {time.perf_counter() - t0:.0f} s")
+    return rows
 
 
 def main(argv: list[str] | None = None) -> int:
     cfg = load_config()
+    ev = cfg.default.evaluation
     ap = argparse.ArgumentParser(description="FreshRoute Monte Carlo evaluation")
-    ap.add_argument("--scenarios", default="all", help="comma list or 'all'")
-    ap.add_argument("--planners", default="all", help="comma list or 'all'")
+    ap.add_argument("--mode", default="all", choices=["all", "main", "replan", "sensitivity"])
+    ap.add_argument("--scenarios", default="all", help="comma list or 'all' (main mode)")
+    ap.add_argument("--planners", default="all", help="comma list or 'all' (main mode)")
     ap.add_argument("--seeds", default=None, help="e.g. 51-100 (default: validation split)")
     ap.add_argument("--hidden", action="store_true", help="final locked run on seeds ≥ hidden_min")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
@@ -193,45 +349,60 @@ def main(argv: list[str] | None = None) -> int:
     scenarios = (sorted(cfg.scenarios.scenarios) if args.scenarios == "all"
                  else args.scenarios.split(","))
     planners = sorted(PLANNERS) if args.planners == "all" else args.planners.split(",")
-    base = cfg.default.evaluation.baseline
+    base = ev.baseline
     if base in PLANNERS and base not in planners:
         planners.append(base)  # paired differences need the baseline on every seed
-    for sc in scenarios:
+    for sc in [*scenarios, *ev.replan_scenarios, ev.sensitivity.scenario]:
         cfg.scenarios.resolved(sc)  # readable error on typos
-    for p in planners:
+    for p in [*planners, *ev.replan_planners, ev.sensitivity.planner]:
         get_planner(p)
 
     placeholder = bool(load_market_params().placeholder_files)  # prints the warning once
-    tasks = [(sc, s, planners) for sc in scenarios for s in seeds]
-    print(f"evaluating {len(scenarios)} scenario(s) × {len(planners)} planner(s) × "
-          f"{len(seeds)} seed(s) = {len(tasks) * len(planners)} runs on {args.jobs} worker(s)")
-    t0 = time.perf_counter()
+    report: dict = {"meta": {
+        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"), "mode": args.mode,
+        "scenarios": scenarios, "planners": planners, "seeds": seeds, "seed_label": label,
+        "n_seeds": len(seeds), "hidden": args.hidden, "baseline": base,
+        "ci_level": ev.ci_level, "bootstrap_resamples": ev.bootstrap_resamples,
+        "placeholder_data": placeholder}}
+    fit_report = PROCESSED_DIR / "fit_report.json"
+    if fit_report.exists():
+        report["forecast_wape"] = json.loads(fit_report.read_text(encoding="utf-8")).get(
+            "holdout_wape")
     rows: list[dict] = []
-    if args.jobs > 1 and len(tasks) > 1:
-        with ProcessPoolExecutor(max_workers=args.jobs) as ex:
-            for i, res in enumerate(ex.map(run_one, tasks), 1):
-                rows.extend(res)
-                print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
-    else:
-        for i, task in enumerate(tasks, 1):
-            rows.extend(run_one(task))
-            print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
-    print(f"\n  done in {time.perf_counter() - t0:.0f} s")
+    if args.mode in ("all", "main"):
+        main_rows = run_tasks([{"scenario": sc, "seed": s, "planners": planners, "mode": "main"}
+                               for sc in scenarios for s in seeds], args.jobs, "main")
+        report["aggregate"] = aggregate(main_rows, cfg)
+        rows += main_rows
+    if args.mode in ("all", "replan"):
+        tasks = [{"scenario": sc, "seed": s, "planners": ev.replan_planners, "replan": rp,
+                  "mode": "replan"}
+                 for sc in ev.replan_scenarios for s in seeds for rp in (False, True)]
+        rp_rows = run_tasks(tasks, args.jobs, "replan vs static")
+        report["replan"] = aggregate_replan(rp_rows, cfg)
+        rows += rp_rows
+    if args.mode in ("all", "sensitivity"):
+        sc = ev.sensitivity
+        n_sens = sc.seeds[1] - sc.seeds[0] + 1
+        # explicit --seeds (or --hidden) override the configured sensitivity seeds
+        s_seeds = (seeds[:n_sens] if args.hidden or args.seeds
+                   else list(range(sc.seeds[0], sc.seeds[1] + 1)))
+        pl = [sc.planner, base]
+        settings = [None] + [(prm, f) for prm in sc.params for f in (1 - sc.delta, 1 + sc.delta)]
+        tasks = [{"scenario": sc.scenario, "seed": s, "planners": pl, "perturb": st,
+                  "mode": "sensitivity"} for st in settings for s in s_seeds]
+        s_rows = run_tasks(tasks, args.jobs, "sensitivity")
+        report["sensitivity"] = aggregate_sensitivity(s_rows, cfg)
+        rows += s_rows
+    report["runs"] = rows
 
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report = {
-        "meta": {"timestamp": ts, "scenarios": scenarios, "planners": planners,
-                 "seeds": seeds, "seed_label": label, "n_seeds": len(seeds),
-                 "hidden": args.hidden, "baseline": base,
-                 "ci_level": cfg.default.evaluation.ci_level,
-                 "bootstrap_resamples": cfg.default.evaluation.bootstrap_resamples,
-                 "placeholder_data": placeholder},
-        "aggregate": aggregate(rows, cfg),
-        "runs": rows,
-    }
+    ts = report["meta"]["timestamp"]
     args.out.mkdir(parents=True, exist_ok=True)
     jp, mp_ = args.out / f"eval_{ts}.json", args.out / f"eval_{ts}.md"
     jp.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
+    if report.get("sensitivity"):
+        (args.out / f"tornado_{ts}.json").write_text(
+            json.dumps(report["sensitivity"], indent=1), encoding="utf-8")
     md = to_markdown(report)
     mp_.write_text(md, encoding="utf-8")
     print(md)

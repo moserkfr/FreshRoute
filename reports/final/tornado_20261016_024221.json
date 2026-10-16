@@ -1,0 +1,125 @@
+{
+ "scenario": "normal",
+ "planner": "freshroute",
+ "baseline": "fifo_nearest",
+ "delta": 0.2,
+ "base": {
+  "d_net_revenue_inr": 3021523.266384906,
+  "d_spoilage_pct": -0.09779616960894306,
+  "n": 20
+ },
+ "tornado": [
+  {
+   "param": "q10",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 2938451.4024164015,
+    "d_spoilage_pct": -0.08341666885341481,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3344192.595825585,
+    "d_spoilage_pct": -0.13192246603325655,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 405741.1934091835
+  },
+  {
+   "param": "demand_sigma",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 2857372.5127802514,
+    "d_spoilage_pct": -0.08022851518554179,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3185764.6579948505,
+    "d_spoilage_pct": -0.11508217834956944,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 328392.1452145991
+  },
+  {
+   "param": "life_sd",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 3023416.5005703876,
+    "d_spoilage_pct": -0.09410543103507311,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3092256.014390966,
+    "d_spoilage_pct": -0.11168854518558265,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 68839.51382057834
+  },
+  {
+   "param": "delay_prob",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 3082627.2395289754,
+    "d_spoilage_pct": -0.10257750383454944,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3030689.406908049,
+    "d_spoilage_pct": -0.10007785614718981,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 51937.83262092667
+  },
+  {
+   "param": "freight",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 3035623.0660520457,
+    "d_spoilage_pct": -0.0975468911824296,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3019355.6526414,
+    "d_spoilage_pct": -0.0994339291628089,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 16267.413410645444
+  },
+  {
+   "param": "price_sigma",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 3021149.637765665,
+    "d_spoilage_pct": -0.09779616960894306,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3021452.851001414,
+    "d_spoilage_pct": -0.09779616960894306,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 303.21323574893177
+  },
+  {
+   "param": "elasticity",
+   "low_factor": 0.8,
+   "high_factor": 1.2,
+   "low": {
+    "d_net_revenue_inr": 3021523.266384906,
+    "d_spoilage_pct": -0.09779616960894306,
+    "n": 20
+   },
+   "high": {
+    "d_net_revenue_inr": 3021523.266384906,
+    "d_spoilage_pct": -0.09779616960894306,
+    "n": 20
+   },
+   "swing_net_revenue_inr": 0.0
+  }
+ ]
+}

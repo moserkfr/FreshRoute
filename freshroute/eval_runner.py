@@ -12,6 +12,10 @@ Usage:
   python -m freshroute.eval_runner                       # all modes, validation seeds
   python -m freshroute.eval_runner --mode main --scenarios normal --seeds 51-60
   python -m freshroute.eval_runner --hidden              # locked final run (seeds ≥ hidden_min)
+  python -m freshroute.eval_runner --resume reports/ckpt_<ts>.jsonl   # continue a stopped run
+
+Each finished instance is appended to reports/ckpt_<ts>.jsonl and a partial report is written
+after every phase, so a stopped run loses at most the instances in flight.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ import json
 import os
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -308,22 +312,56 @@ def to_markdown(report: dict) -> str:
     return "\n".join(lines)
 
 
-def run_tasks(tasks: list[dict], jobs: int, label: str) -> list[dict]:
-    n_runs = sum(len(t["planners"]) for t in tasks)
-    print(f"{label}: {len(tasks)} instance(s), {n_runs} runs on {jobs} worker(s)")
+def task_key(task: dict) -> str:
+    return json.dumps(task, sort_keys=True, default=str)
+
+
+def load_checkpoint(path: Path) -> dict[str, list[dict]]:
+    """Finished instances from a checkpoint file (a torn last line from a crash is skipped)."""
+    done: dict[str, list[dict]] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            done[rec["key"]] = rec["rows"]
+    return done
+
+
+def run_tasks(tasks: list[dict], jobs: int, label: str, ckpt: Path | None = None,
+              done: dict[str, list[dict]] | None = None) -> list[dict]:
+    done = done or {}
+    results = {task_key(t): done[task_key(t)] for t in tasks if task_key(t) in done}
+    todo = [t for t in tasks if task_key(t) not in results]
+    n_runs = sum(len(t["planners"]) for t in todo)
+    print(f"{label}: {len(tasks)} instance(s), {len(results)} from checkpoint, "
+          f"{n_runs} runs on {jobs} worker(s)")
     t0 = time.perf_counter()
-    rows: list[dict] = []
-    if jobs > 1 and len(tasks) > 1:
-        with ProcessPoolExecutor(max_workers=jobs) as ex:
-            for i, res in enumerate(ex.map(run_one, tasks), 1):
-                rows.extend(res)
-                print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
-    else:
-        for i, task in enumerate(tasks, 1):
-            rows.extend(run_one(task))
-            print(f"\r  {i}/{len(tasks)} instances", end="", flush=True)
+    fh = ckpt.open("a", encoding="utf-8") if ckpt else None
+
+    def finish(task: dict, res: list[dict]) -> None:
+        results[task_key(task)] = res
+        if fh:
+            fh.write(json.dumps({"key": task_key(task), "rows": res}, default=str) + "\n")
+            fh.flush()
+        print(f"\r  {len(results)}/{len(tasks)} instances", end="", flush=True)
+
+    try:
+        if jobs > 1 and len(todo) > 1:
+            with ProcessPoolExecutor(max_workers=jobs) as ex:
+                futs = {ex.submit(run_one, t): t for t in todo}
+                for f in as_completed(futs):
+                    finish(futs[f], f.result())
+        else:
+            for task in todo:
+                finish(task, run_one(task))
+    finally:
+        if fh:
+            fh.close()
     print(f"\n  done in {time.perf_counter() - t0:.0f} s")
-    return rows
+    # task order, not completion order, so a resumed run gives the same report
+    return [r for t in tasks for r in results[task_key(t)]]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -337,6 +375,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hidden", action="store_true", help="final locked run on seeds ≥ hidden_min")
     ap.add_argument("--jobs", type=int, default=max(1, (os.cpu_count() or 2) - 1))
     ap.add_argument("--out", type=Path, default=REPORTS_DIR)
+    ap.add_argument("--resume", type=Path, default=None,
+                    help="checkpoint of a stopped run (same arguments) to continue")
+    ap.add_argument("--no-checkpoint", action="store_true")
     args = ap.parse_args(argv)
 
     sd = cfg.default.seeds
@@ -373,19 +414,35 @@ def main(argv: list[str] | None = None) -> int:
     if fit_report.exists():
         report["forecast_wape"] = json.loads(fit_report.read_text(encoding="utf-8")).get(
             "holdout_wape")
+    args.out.mkdir(parents=True, exist_ok=True)
+    ckpt: Path | None = None
+    done: dict[str, list[dict]] = {}
+    if args.resume:
+        ckpt, done = args.resume, load_checkpoint(args.resume)
+        print(f"resuming from {ckpt}: {len(done)} finished instance(s)")
+    elif not args.no_checkpoint:
+        ckpt = args.out / f"ckpt_{report['meta']['timestamp']}.jsonl"
+        print(f"checkpoint: {ckpt}")
     rows: list[dict] = []
+
+    def save(final: bool) -> None:
+        report["runs"] = rows
+        write_report(report, args.out, final)
+
     if args.mode in ("all", "main"):
         main_rows = run_tasks([{"scenario": sc, "seed": s, "planners": planners, "mode": "main"}
-                               for sc in scenarios for s in seeds], args.jobs, "main")
+                               for sc in scenarios for s in seeds], args.jobs, "main", ckpt, done)
         report["aggregate"] = aggregate(main_rows, cfg)
         rows += main_rows
+        save(final=False)
     if args.mode in ("all", "replan"):
         tasks = [{"scenario": sc, "seed": s, "planners": ev.replan_planners, "replan": rp,
                   "mode": "replan"}
                  for sc in ev.replan_scenarios for s in seeds for rp in (False, True)]
-        rp_rows = run_tasks(tasks, args.jobs, "replan vs static")
+        rp_rows = run_tasks(tasks, args.jobs, "replan vs static", ckpt, done)
         report["replan"] = aggregate_replan(rp_rows, cfg)
         rows += rp_rows
+        save(final=False)
     if args.mode in ("all", "sensitivity"):
         sc = ev.sensitivity
         n_sens = sc.seeds[1] - sc.seeds[0] + 1
@@ -396,23 +453,29 @@ def main(argv: list[str] | None = None) -> int:
         settings = [None] + [(prm, f) for prm in sc.params for f in (1 - sc.delta, 1 + sc.delta)]
         tasks = [{"scenario": sc.scenario, "seed": s, "planners": pl, "perturb": st,
                   "mode": "sensitivity"} for st in settings for s in s_seeds]
-        s_rows = run_tasks(tasks, args.jobs, "sensitivity")
+        s_rows = run_tasks(tasks, args.jobs, "sensitivity", ckpt, done)
         report["sensitivity"] = aggregate_sensitivity(s_rows, cfg)
         rows += s_rows
-    report["runs"] = rows
+    save(final=True)
+    return 0
 
+
+def write_report(report: dict, out: Path, final: bool) -> None:
+    """Write eval_<ts>.json/.md; after each phase a partial report goes to eval_<ts>_partial.*."""
     ts = report["meta"]["timestamp"]
-    args.out.mkdir(parents=True, exist_ok=True)
-    jp, mp_ = args.out / f"eval_{ts}.json", args.out / f"eval_{ts}.md"
+    stem = ts if final else f"{ts}_partial"
+    jp, mp_ = out / f"eval_{stem}.json", out / f"eval_{stem}.md"
     jp.write_text(json.dumps(report, indent=1, default=str), encoding="utf-8")
-    if report.get("sensitivity"):
-        (args.out / f"tornado_{ts}.json").write_text(
+    if final and report.get("sensitivity"):
+        (out / f"tornado_{ts}.json").write_text(
             json.dumps(report["sensitivity"], indent=1), encoding="utf-8")
     md = to_markdown(report)
     mp_.write_text(md, encoding="utf-8")
-    print(md)
+    if final:
+        print(md)
+        for f in out.glob(f"eval_{ts}_partial.*"):
+            f.unlink()
     print(f"wrote {jp}\nwrote {mp_}")
-    return 0
 
 
 if __name__ == "__main__":
